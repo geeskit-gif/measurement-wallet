@@ -4,5 +4,12 @@
   "compatibility_date": "2026-09-18",
   "assets": {
     "directory": "./dist"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "measurement_wallet",
+      "database_id": "a0559ef2-2a77-4516-95e1-12866e10245a"
+    }
+  ]
 }
