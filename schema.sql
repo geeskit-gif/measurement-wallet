@@ -1,6 +1,5 @@
 -- MW / Measurement Wallet D1 schema
--- Matches the frozen V1 frontend data model.
--- Flexible fields and submission values remain JSON.
+-- Production schema for campaigns, secure organizer ownership, and submissions.
 
 CREATE TABLE IF NOT EXISTS campaigns (
   id TEXT PRIMARY KEY,
@@ -12,7 +11,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
   fields_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
   share_token TEXT NOT NULL UNIQUE,
-  context TEXT NOT NULL CHECK (context IN ('BUSINESS', 'FAMILY', 'TEAM', 'EVENT', 'OTHER'))
+  context TEXT NOT NULL CHECK (context IN ('BUSINESS', 'FAMILY', 'TEAM', 'EVENT', 'OTHER')),
+  admin_token TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_campaigns_share_token ON campaigns(share_token);
