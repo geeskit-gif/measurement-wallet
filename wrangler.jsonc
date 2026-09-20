@@ -7,6 +7,13 @@
     "directory": "./dist",
     "not_found_handling": "single-page-application"
   },
+  "routes": [
+    {
+      "pattern": "mw.geeskit.com",
+      "zone_name": "geeskit.com",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
