@@ -15,6 +15,7 @@ type CampaignStatus = 'OPEN' | 'CLOSED';
 type UseContextType = 'BUSINESS' | 'FAMILY' | 'TEAM' | 'EVENT' | 'OTHER';
 type Campaign = {
   id: string;
+  adminToken?: string;
   name: string;
   organization: string;
   description: string;
@@ -337,10 +338,10 @@ const MOCK_INVOICES: Invoice[] = [
 
 // ===== BACKEND API =====
 const API_BASE = '/api';
-const apiJson = async (path:string, options:RequestInit = {}) => {
+const apiJson = async (path:string, options:RequestInit = {}, adminToken?:string) => {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { 'Content-Type':'application/json', ...(options.headers || {}) },
+    headers: { 'Content-Type':'application/json', ...(adminToken ? {'X-MW-Admin-Token': adminToken} : {}), ...(options.headers || {}) },
   });
   const data = await res.json().catch(()=>null);
   if(!res.ok) throw new Error(data?.error || `API request failed: ${res.status}`);
@@ -369,9 +370,9 @@ const fromSubmissionRow = (row:any): Submission => ({
 export default function App(){
   const demo = useMemo(()=> makeDemoCampaigns(), []);
   const [view, setView] = useState<View>('landing');
-  const [campaigns, setCampaigns] = useState<Campaign[]>(demo.campaigns);
-  const [submissions, setSubmissions] = useState<Submission[]>(demo.submissions);
-  const [selectedId, setSelectedId] = useState<string>(demo.campaigns[0].id);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('');
   const [publicToken, setPublicToken] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
@@ -419,50 +420,24 @@ export default function App(){
     }
 
     const load = async () => {
-      let localData:any = null;
-      try {
-        const raw = localStorage.getItem('mw_campaigns_v1');
-        if(raw) localData = JSON.parse(raw);
-      } catch {}
+      const ownedRaw = localStorage.getItem('mw_owned_campaigns_v2');
+      let owned:Array<{id:string;adminToken:string}> = [];
+      try { owned = ownedRaw ? JSON.parse(ownedRaw) : []; } catch {}
 
       try {
-        const rows = await apiJson('/campaigns');
-        if(Array.isArray(rows) && rows.length > 0) {
-          const details = await Promise.all(rows.map(async (row:any) => apiJson(`/campaigns/${encodeURIComponent(row.id)}`)));
-          const loadedCampaigns = details.map((d:any)=>fromCampaignRow(d.campaign));
-          const loadedSubmissions = details.flatMap((d:any)=>(d.submissions || []).map(fromSubmissionRow));
-          if(active) {
-            setCampaigns(loadedCampaigns);
-            setSubmissions(loadedSubmissions);
-            if(loadedCampaigns[0] && !pathMatch) setSelectedId(loadedCampaigns[0].id);
-          }
-        } else {
-          const sourceCampaigns = Array.isArray(localData?.campaigns) && localData.campaigns.length
-            ? localData.campaigns.map((x:any)=>({...x, context:(x.context as UseContextType)||'BUSINESS', organization:x.organization??''}))
-            : demo.campaigns;
-          const sourceSubmissions = Array.isArray(localData?.submissions) ? localData.submissions : demo.submissions;
-
-          for(const campaign of sourceCampaigns) {
-            await apiJson(`/campaigns/${encodeURIComponent(campaign.id)}`, { method:'POST', body:JSON.stringify({campaign}) });
-          }
-          for(const submission of sourceSubmissions) {
-            await apiJson('/submissions', { method:'POST', body:JSON.stringify({submission}) });
-          }
-          if(active) {
-            setCampaigns(sourceCampaigns);
-            setSubmissions(sourceSubmissions);
-            if(sourceCampaigns[0] && !pathMatch) setSelectedId(sourceCampaigns[0].id);
-          }
+        const details = await Promise.all(owned.filter(x=>x?.id&&x?.adminToken).map(async owner => {
+          try { return await apiJson('/campaigns/'+encodeURIComponent(owner.id), {}, owner.adminToken); } catch { return null; }
+        }));
+        const valid = details.filter(Boolean) as any[];
+        const loadedCampaigns = valid.map(d=>({ ...fromCampaignRow(d.campaign), adminToken: owned.find(x=>x.id===d.campaign.id)?.adminToken }));
+        const loadedSubmissions = valid.flatMap(d=>(d.submissions||[]).map(fromSubmissionRow));
+        if(active) {
+          setCampaigns(loadedCampaigns);
+          setSubmissions(loadedSubmissions);
+          if(loadedCampaigns[0] && !pathMatch) setSelectedId(loadedCampaigns[0].id);
         }
       } catch {
-        const fallback = Array.isArray(localData?.campaigns) && localData.campaigns.length
-          ? localData
-          : demo;
-        if(active) {
-          setCampaigns(fallback.campaigns);
-          setSubmissions(fallback.submissions || []);
-          if(fallback.campaigns[0] && !pathMatch) setSelectedId(fallback.campaigns[0].id);
-        }
+        if(active) { setCampaigns([]); setSubmissions([]); }
       } finally {
         if(active) setBackendReady(true);
       }
@@ -478,7 +453,7 @@ export default function App(){
     }catch{}
 
     return ()=>{ active=false; };
-  },[demo]);
+  },[]);
 
   useEffect(()=>{
     if(!backendReady) return;
@@ -576,7 +551,11 @@ export default function App(){
       context: createContext,
     };
     try {
-      await apiJson(`/campaigns/${encodeURIComponent(newCamp.id)}`, { method:'POST', body:JSON.stringify({campaign:newCamp}) });
+      const created = await apiJson('/campaigns', { method:'POST', body:JSON.stringify({campaign:newCamp}) });
+      newCamp.adminToken = created.adminToken;
+      const ownedRaw = localStorage.getItem('mw_owned_campaigns_v2');
+      const owned = ownedRaw ? JSON.parse(ownedRaw) : [];
+      localStorage.setItem('mw_owned_campaigns_v2', JSON.stringify([{id:newCamp.id,adminToken:newCamp.adminToken}, ...owned.filter((x:any)=>x.id!==newCamp.id)]));
     } catch {
       setToast('Could not save to MW server');
       setTimeout(()=>setToast(''),2500);
@@ -598,7 +577,7 @@ export default function App(){
     if(!current) return;
     const updated = {...current, status: current.status==='OPEN' ? 'CLOSED' as CampaignStatus : 'OPEN' as CampaignStatus};
     try {
-      await apiJson(`/campaigns/${encodeURIComponent(id)}`, { method:'PUT', body:JSON.stringify({campaign:updated}) });
+      await apiJson(`/campaigns/${encodeURIComponent(id)}`, { method:'PUT', body:JSON.stringify({campaign:updated}) }, current.adminToken);
       setCampaigns(prev=>prev.map(c=>c.id===id?updated:c));
     } catch {
       setToast('Could not save status');
@@ -632,7 +611,8 @@ export default function App(){
       values: {...publicValues},
     };
     try {
-      await apiJson('/submissions', { method:'POST', body:JSON.stringify({submission:newSub}) });
+      const saved = await apiJson(`/campaigns/share/${encodeURIComponent(publicCampaign.shareToken)}/submissions`, { method:'POST', body:JSON.stringify({submission:newSub}) });
+      newSub.id = saved.id || newSub.id;
     } catch {
       setToast('Could not save submission');
       setTimeout(()=>setToast(''),2500);
