@@ -353,10 +353,11 @@ const fetchBillingStatus = async (adminToken?:string) => {
 
 // ===== BACKEND API =====
 const API_BASE = '/api';
+const getOwnerKey = () => { try { const existing=localStorage.getItem('mw_owner_key_v1'); if(existing) return existing; const key=crypto.randomUUID(); localStorage.setItem('mw_owner_key_v1',key); return key; } catch { return ''; } };
 const apiJson = async (path:string, options:RequestInit = {}, adminToken?:string) => {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { 'Content-Type':'application/json', ...(adminToken ? {'X-MW-Admin-Token': adminToken} : {}), ...(options.headers || {}) },
+    headers: { 'Content-Type':'application/json', 'X-MW-Owner-Key': getOwnerKey(), ...(adminToken ? {'X-MW-Admin-Token': adminToken} : {}), ...(options.headers || {}) },
   });
   const data = await res.json().catch(()=>null);
   if(!res.ok) throw new Error(data?.error || `API request failed: ${res.status}`);
@@ -400,14 +401,6 @@ export default function App(){
   const [pricingInterval, setPricingInterval] = useState<BillingInterval>('monthly');
   const [upgradeTarget, setUpgradeTarget] = useState<Plan>('PRO');
   const [billingTab, setBillingTab] = useState<BillingTab>('overview');
-  const [paymentForm, setPaymentForm] = useState({
-    email: 'you@company.com',
-    card: '4242 4242 4242 4242',
-    expiry: '12 / 28',
-    cvc: '123',
-    name: 'Alex Rivera',
-    address: 'North Depot, Suite 4',
-  });
   const [orgForm, setOrgForm] = useState({ name: 'North Depot Logistics', email: 'billing@northdepot.com', taxId: 'GB 123 456 789' });
 
   // CREATE FLOW STATE
@@ -519,11 +512,6 @@ export default function App(){
       })
       .catch(()=>{});
   },[publicToken, campaigns]);
-  useEffect(()=>{
-    try{
-      localStorage.setItem('mw_billing_v1', JSON.stringify(billing));
-    }catch{}
-  },[billing]);
 
   // DERIVED
   const selectedCampaign = campaigns.find(c=>c.id===selectedId) || campaigns[0];
@@ -692,17 +680,7 @@ export default function App(){
     setUpgradeTarget(plan);
     setView('upgrade');
   };
-  const handlePay = () => {
-    if(!paymentForm.email.includes('@')){
-      setToast('Enter valid email');
-      setTimeout(()=>setToast(''),2000);
-      return;
-    }
-    setBilling({ plan: upgradeTarget, interval: pricingInterval, email: paymentForm.email });
-    setView('payment-success');
-    setToast(`${upgradeTarget} activated`);
-    setTimeout(()=>setToast(''),2500);
-  };
+  const handlePay = () => { setView('pricing'); };
   const handleCancelPlan = () => {
     setBilling({ plan: 'FREE', interval: 'monthly' });
     setToast('Plan cancelled • Back to FREE');
@@ -1161,78 +1139,6 @@ export default function App(){
           </div>
         )}
 
-        {view==='payment' && (
-          <div className="max-w-[1000px] mx-auto space-y-6">
-            <div className="flex items-center gap-3">
-              <button onClick={()=> setView('upgrade')} className="w-[36px] h-[36px] bg-[#101012] border border-[#222] rounded-[8px] flex items-center justify-center">←</button>
-              <div>
-                <h1 className="text-[20px] md:text-[24px] font-[800] tracking-[-0.01em] uppercase">PAYMENT • {upgradeTarget}</h1>
-                <p className="text-[11px] mono text-[#8A8A90]">FRONTEND-ONLY • MOCK CARD 4242 • NO REAL CHARGE</p>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-[1.25fr_0.75fr] gap-6">
-              <div className="bg-[#101012] border border-[#222] rounded-[16px] p-6 md:p-7 faceted-sm space-y-5">
-                <div className="text-[11px] font-[800] tracking-[0.14em] text-[#FF7A18]">PAYMENT DETAILS • 52PX INPUTS • 16PX FONT</div>
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">EMAIL *</label>
-                    <input value={paymentForm.email} onChange={e=> setPaymentForm({...paymentForm, email:e.target.value})} placeholder="you@company.com" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] placeholder:text-[#5A5A66] focus:outline-none focus:border-[#FF7A18]/50" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">CARD NUMBER • 4242 4242 4242 4242</label>
-                    <input value={paymentForm.card} onChange={e=> setPaymentForm({...paymentForm, card:e.target.value})} placeholder="4242 4242 4242 4242" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] tracking-[0.08em] focus:outline-none focus:border-[#FF7A18]/50" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">EXPIRY</label>
-                      <input value={paymentForm.expiry} onChange={e=> setPaymentForm({...paymentForm, expiry:e.target.value})} placeholder="12 / 28" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] focus:outline-none focus:border-[#FF7A18]/50" />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">CVC</label>
-                      <input value={paymentForm.cvc} onChange={e=> setPaymentForm({...paymentForm, cvc:e.target.value})} placeholder="123" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] focus:outline-none focus:border-[#FF7A18]/50" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">NAME ON CARD</label>
-                    <input value={paymentForm.name} onChange={e=> setPaymentForm({...paymentForm, name:e.target.value})} placeholder="Alex Rivera" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] focus:outline-none focus:border-[#FF7A18]/50" />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">BILLING ADDRESS</label>
-                    <input value={paymentForm.address} onChange={e=> setPaymentForm({...paymentForm, address:e.target.value})} placeholder="North Depot, Suite 4" className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] focus:outline-none focus:border-[#FF7A18]/50" />
-                  </div>
-                </div>
-                <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3 flex gap-2">
-                  <span className="text-[#FF7A18] text-[12px]">ⓘ</span>
-                  <span className="text-[11px] leading-[1.5] text-[#8A8A90]">This is a frontend-only mock. No real card is charged. We store plan in localStorage <span className="text-[#C2C2CA] font-[600]">mw_billing_v1 {"{plan:'PRO'}"}</span>. Use 4242 test card.</span>
-                </div>
-              </div>
-              <div className="space-y-4 md:sticky md:top-[88px] h-fit">
-                <div className="bg-[#101012] border border-[#222] rounded-[16px] p-6 faceted-sm">
-                  <div className="text-[11px] font-[800] tracking-[0.14em]">ORDER SUMMARY • STICKY</div>
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="w-[40px] h-[40px] bg-[#FF7A18] rounded-[8px] flex items-center justify-center text-black font-[800]">{upgradeTarget[0]}</div>
-                    <div>
-                      <div className="text-[14px] font-[700]">{upgradeTarget} PLAN</div>
-                      <div className="text-[11px] mono text-[#8A8A90]">{pricingInterval.toUpperCase()} • {PLAN_LIMITS[upgradeTarget].submissions} subs/mo</div>
-                    </div>
-                    <div className="ml-auto text-[14px] font-[800]">${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal}</div>
-                  </div>
-                  <div className="mt-5 space-y-2.5 border-t border-[#1A1A1E] pt-4">
-                    <div className="flex justify-between text-[12px]"><span className="text-[#8A8A90]">Subtotal</span><span>${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal}.00</span></div>
-                    <div className="flex justify-between text-[12px]"><span className="text-[#8A8A90]">Tax</span><span>$0.00 • Mock</span></div>
-                    <div className="flex justify-between text-[15px] font-[800] pt-2 border-t border-[#1A1A1E]"><span>TOTAL DUE</span><span className="text-[#FF7A18]">${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal}.00</span></div>
-                  </div>
-                  <button onClick={handlePay} className="mt-6 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] text-black font-[800] tracking-[0.12em] text-[13px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.35)]">PAY ${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal} →</button>
-                  <div className="mt-3 flex items-center justify-center gap-2 text-[10px] mono text-[#5A5A66]">🔒 STRIPE HOSTED CHECKOUT • SECURE PAYMENT</div>
-                </div>
-                <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4">
-                  <div className="text-[11px] font-[700] tracking-[0.1em]">WHAT HAPPENS NEXT</div>
-                  <div className="mt-2 text-[11px] leading-[1.5] text-[#6A6A72]">→ Sets localStorage mw_billing_v1 {"{plan:'PRO'}"}<br/>→ Mock invoice INV-2025-00X<br/>→ Redirects to payment-success<br/>→ GO TO DASHBOARD</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {view==='payment-success' && (
           <div className="max-w-[560px] mx-auto pt-6 md:pt-10">
