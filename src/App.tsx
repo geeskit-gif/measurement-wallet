@@ -342,12 +342,13 @@ const startStripeCheckout = async (adminToken:string, email:string) => {
   const data = await apiJson('/billing/checkout', {method:'POST', body:JSON.stringify({email})}, adminToken);
   if(data?.url) window.location.href = data.url;
 };
-const refreshBilling = async (adminToken?:string) => {
-  if(!adminToken) return;
+const fetchBillingStatus = async (adminToken?:string) => {
+  if(!adminToken) return null;
   try {
-    const data = await apiJson('/billing/status', {}, adminToken);
-    if(data?.plan) setBilling({plan:data.plan as Plan, interval:'monthly', email:data.email});
-  } catch {}
+    return await apiJson('/billing/status', {}, adminToken);
+  } catch {
+    return null;
+  }
 };
 
 // ===== BACKEND API =====
@@ -469,6 +470,23 @@ export default function App(){
       } finally {
         if(active) setBackendReady(true);
       }
+
+      // Reconcile billing with Stripe after returning from hosted Checkout.
+      // Check every locally owned campaign token because older MW versions
+      // associate billing with the organizer credential for that campaign.
+      try {
+        const billingResults = await Promise.all(
+          owned.filter(x=>x?.adminToken).map(x=>fetchBillingStatus(x.adminToken))
+        );
+        const activeBilling = billingResults.find((b:any)=>b?.plan==='PRO') || billingResults.find(Boolean);
+        if(active && activeBilling?.plan){
+          setBilling({
+            plan: activeBilling.plan as Plan,
+            interval:'monthly',
+            email: activeBilling.email || undefined
+          });
+        }
+      } catch {}
     };
     load();
 
