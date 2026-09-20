@@ -1,7 +1,8 @@
 const SCHEMA=`CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY,name TEXT NOT NULL,organization TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',deadline TEXT NOT NULL DEFAULT '',status TEXT NOT NULL CHECK (status IN ('OPEN','CLOSED')),fields_json TEXT NOT NULL,created_at TEXT NOT NULL,share_token TEXT NOT NULL UNIQUE,context TEXT NOT NULL CHECK (context IN ('BUSINESS','FAMILY','TEAM','EVENT','OTHER')),admin_token TEXT NOT NULL DEFAULT '');CREATE INDEX IF NOT EXISTS idx_campaigns_share_token ON campaigns(share_token);CREATE INDEX IF NOT EXISTS idx_campaigns_created_at ON campaigns(created_at);CREATE TABLE IF NOT EXISTS submissions (id TEXT PRIMARY KEY,campaign_id TEXT NOT NULL,submitted_at TEXT NOT NULL,values_json TEXT NOT NULL,FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE);CREATE INDEX IF NOT EXISTS idx_submissions_campaign_id ON submissions(campaign_id);CREATE INDEX IF NOT EXISTS idx_submissions_submitted_at ON submissions(submitted_at);`;
-interface Env{DB:D1Database;ASSETS:Fetcher}
+interface Env{DB:D1Database;ASSETS:Fetcher;STRIPE_SECRET_KEY:string;STRIPE_WEBHOOK_SECRET:string}
 const json=(d:unknown,s=200,origin='')=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','access-control-allow-origin':origin,'vary':'Origin'}});
 const allowedOrigin=(r:Request)=>{const o=r.headers.get('Origin')||'';return /^https:\/\/(mw\.geeskit\.com|measurement-wallet\.geeskitgsp\.workers\.dev)$/.test(o)||/^https?:\/\/localhost(?::\d+)?$/.test(o)?o:''};
+const stripeFetch=async(e:Env,path:string,body?:URLSearchParams)=>{const res=await fetch('https://api.stripe.com/v1/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+e.STRIPE_SECRET_KEY,'Content-Type':'application/x-www-form-urlencoded'},body});const data=await res.json().catch(()=>null);if(!res.ok)throw new Error(data?.error?.message||'Stripe request failed');return data;};
 const cleanText=(v:unknown,max=5000)=>String(v??'').trim().slice(0,max);
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 async function hashToken(value:string){const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
@@ -11,6 +12,7 @@ async function setup(db:D1Database){
   // Remove only the original built-in demo records. Never seed demo data.
   await db.prepare("DELETE FROM submissions WHERE campaign_id IN ('camp_01','camp_02','camp_03')").run();
   await db.prepare("DELETE FROM campaigns WHERE id IN ('camp_01','camp_02','camp_03')").run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS billing (owner_key TEXT PRIMARY KEY, stripe_customer_id TEXT, subscription_id TEXT, status TEXT NOT NULL DEFAULT 'inactive', email TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL)`).run();
 }
 async function readJson(r:Request){try{return await r.json() as any;}catch{return null;}}
 async function adminCampaign(db:D1Database,id:string,r:Request){
@@ -27,9 +29,74 @@ async function api(r:Request,e:Env):Promise<Response>{
     try{await e.DB.prepare('SELECT 1').first();return json({ok:true,service:'measurement-wallet-api',database:'connected'},200,origin);}
     catch{return json({ok:false,database:'unavailable'},503,origin);}
   }
+  if(p==='/api/stripe/webhook'&&r.method==='POST'){
+    const sig=r.headers.get('stripe-signature')||'', raw=await r.text();
+    const parts=Object.fromEntries(sig.split(',').map(x=>x.split('=')));
+    const ts=Number(parts.t), v1=parts.v1||'';
+    const secret=e.STRIPE_WEBHOOK_SECRET||'';
+    if(!secret||!ts||Math.abs(Date.now()/1000-ts)>300) return json({error:'Invalid webhook'},400,origin);
+    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+    const mac=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(ts+'.'+raw));
+    const expected=Array.from(new Uint8Array(mac),b=>b.toString(16).padStart(2,'0')).join('');
+    if(expected!==v1) return json({error:'Invalid signature'},400,origin);
+    try{
+      const event=JSON.parse(raw), obj=event.data?.object||{}, meta=obj.metadata||{}, ownerKey=meta.owner_key||obj.subscription_details?.metadata?.owner_key||'';
+      if(ownerKey){
+        if(event.type==='checkout.session.completed'){
+          await e.DB.prepare('INSERT INTO billing (owner_key,stripe_customer_id,subscription_id,status,email,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(owner_key) DO UPDATE SET stripe_customer_id=excluded.stripe_customer_id,subscription_id=excluded.subscription_id,status=excluded.status,email=excluded.email,updated_at=excluded.updated_at')
+            .bind(ownerKey,obj.customer||'',obj.subscription||'','active',obj.customer_details?.email||'',new Date().toISOString()).run();
+        } else if(event.type.startsWith('customer.subscription.')){
+          await e.DB.prepare('UPDATE billing SET subscription_id=?,status=?,updated_at=? WHERE owner_key=?')
+            .bind(obj.id||'',obj.status||'inactive',new Date().toISOString(),ownerKey).run();
+        }
+      }
+      return json({received:true},200,origin);
+    }catch(x){return json({error:String(x)},400,origin);}
+  }
+
   if(p==='/api/setup'&&r.method==='POST'){try{await setup(e.DB);return json({ok:true,setup:'complete'},200,origin);}catch(x){return json({ok:false,error:String(x)},500,origin);}}
   try{
     await setup(e.DB);
+
+    // ===== STRIPE BILLING =====
+    if(p==='/api/billing/checkout'&&r.method==='POST'){
+      const supplied=r.headers.get('x-mw-admin-token')||'';
+      if(!supplied) return json({error:'Not authorized'},401,origin);
+      const ownerKey=await hashToken(supplied), b=await readJson(r), email=cleanText(b?.email,320);
+      const existing=await e.DB.prepare('SELECT stripe_customer_id,status FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      let customerId=existing?.stripe_customer_id||'';
+      if(!customerId){
+        const customer=await stripeFetch(e,'customers',new URLSearchParams({email:email||'unknown@invalid.local',metadata_owner_key:ownerKey}));
+        customerId=customer.id;
+      }
+      const form=new URLSearchParams();
+      form.set('mode','subscription'); form.set('customer',customerId); form.set('line_items[0][price]','price_1UHqWFEFWL448Vjk8LPdjTzL'); form.set('line_items[0][quantity]','1');
+      form.set('success_url','https://mw.geeskit.com/?billing=success'); form.set('cancel_url','https://mw.geeskit.com/?billing=cancelled');
+      form.set('client_reference_id',ownerKey); form.set('metadata[owner_key]',ownerKey); form.set('metadata[product]','measurement_wallet');
+      form.set('subscription_data[metadata][owner_key]',ownerKey); form.set('subscription_data[metadata][product]','measurement_wallet');
+      const session=await stripeFetch(e,'checkout/sessions',form);
+      await e.DB.prepare('INSERT INTO billing (owner_key,stripe_customer_id,status,email,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(owner_key) DO UPDATE SET stripe_customer_id=excluded.stripe_customer_id,email=excluded.email,updated_at=excluded.updated_at')
+        .bind(ownerKey,customerId,existing?.status||'inactive',email,new Date().toISOString()).run();
+      return json({ok:true,url:session.url},200,origin);
+    }
+    if(p==='/api/billing/status'&&r.method==='GET'){
+      const supplied=r.headers.get('x-mw-admin-token')||'';
+      if(!supplied) return json({error:'Not authorized'},401,origin);
+      const ownerKey=await hashToken(supplied);
+      const row=await e.DB.prepare('SELECT status,email,subscription_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      const active=['active','trialing'].includes(row?.status);
+      return json({plan:active?'PRO':'FREE',status:row?.status||'inactive',email:row?.email||'',subscriptionId:row?.subscription_id||''},200,origin);
+    }
+    if(p==='/api/billing/portal'&&r.method==='POST'){
+      const supplied=r.headers.get('x-mw-admin-token')||'';
+      if(!supplied) return json({error:'Not authorized'},401,origin);
+      const ownerKey=await hashToken(supplied);
+      const row=await e.DB.prepare('SELECT stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      if(!row?.stripe_customer_id) return json({error:'No Stripe customer found'},404,origin);
+      const form=new URLSearchParams({customer:row.stripe_customer_id,return_url:'https://mw.geeskit.com/'});
+      const session=await stripeFetch(e,'billing_portal/sessions',form);
+      return json({ok:true,url:session.url},200,origin);
+    }
 
     // Create: the server owns the admin credential. It is returned once to the creator.
     if(p==='/api/campaigns'&&r.method==='POST'){
