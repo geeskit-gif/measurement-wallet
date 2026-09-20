@@ -419,9 +419,23 @@ export default function App(){
     }
 
     const load = async () => {
-      const ownedRaw = localStorage.getItem('mw_owned_campaigns_v2');
       let owned:Array<{id:string;adminToken:string}> = [];
-      try { owned = ownedRaw ? JSON.parse(ownedRaw) : []; } catch {}
+      try {
+        const ownedRaw = localStorage.getItem('mw_owned_campaigns_v2');
+        owned = ownedRaw ? JSON.parse(ownedRaw) : [];
+      } catch {}
+
+      // Cross-device recovery: an owner link carries the existing bearer credential
+      // in the URL fragment, so it is never sent to the server as a request path.
+      const ownerMatch = window.location.hash.match(/^#mw-owner\/([^/]+)\/([^/]+)$/);
+      if(ownerMatch){
+        const recovered = {id: ownerMatch[1], adminToken: ownerMatch[2]};
+        owned = [recovered, ...owned.filter(x=>x?.id!==recovered.id)];
+        try { localStorage.setItem('mw_owned_campaigns_v2', JSON.stringify(owned)); } catch {}
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        setToast('OWNER LINK CONNECTED');
+        setTimeout(()=>setToast(''),2200);
+      }
 
       try {
         const details = await Promise.all(owned.filter(x=>x?.id&&x?.adminToken).map(async owner => {
@@ -589,6 +603,13 @@ export default function App(){
     setCopied(true);
     setToast('Link copied');
     setTimeout(()=>{ setCopied(false); setToast(''); },1800);
+  };
+  const copyOwnerLink = async (campaign:Campaign) => {
+    if(!campaign.adminToken) return;
+    const url = `https://mw.geeskit.com/#mw-owner/${encodeURIComponent(campaign.id)}/${encodeURIComponent(campaign.adminToken)}`;
+    try{ await navigator.clipboard.writeText(url); }catch{}
+    setToast('OWNER LINK COPIED • SAVE IT FOR OTHER DEVICES');
+    setTimeout(()=>setToast(''),2800);
   };
   const handlePublicSubmit = async () => {
     if(!publicCampaign) return;
@@ -1778,8 +1799,10 @@ export default function App(){
                         if(navigator.share){ navigator.share({title:selectedCampaign.name, url}).catch(()=>{}); } else { copyLink(selectedCampaign.shareToken); }
                       }} className="h-[48px] px-5 bg-[#0A0A0C] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">SHARE</button>
                       <button onClick={()=>{ setPublicToken(selectedCampaign.shareToken); setView('public'); }} className="h-[48px] px-5 bg-[#101012] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.1em]">OPEN FORM ↗</button>
+                      <button onClick={()=>copyOwnerLink(selectedCampaign)} className="h-[48px] px-5 bg-[#101012] border border-[#FF7A18]/20 text-[#FF9A4C] rounded-[10px] text-[12px] font-[700] tracking-[0.1em]">SAVE OWNER LINK</button>
                     </div>
                     <p className="mt-3 text-[12px] leading-[1.5] text-[#8A8A90]">{selectedCampaign.context==='FAMILY' ? 'Send this link to your family via WhatsApp. Everyone adds their own sizes. No account needed, mobile-friendly.' : 'Send this link to your group via WhatsApp, email or Slack. Participants do NOT need an account. You’ll see submissions live here.'}</p>
+                    <div className="mt-3 pt-3 border-t border-[#1A1A1E] text-[11px] leading-[1.5] text-[#6A6A72]"><span className="text-[#FF9A4C] font-[700]">OWNER LINK:</span> Save this private link to open this group from another device. It gives organizer access — do not share it with participants.</div>
                   </div>
                 </div>
 
