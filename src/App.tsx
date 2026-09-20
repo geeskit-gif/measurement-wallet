@@ -1973,11 +1973,11 @@ export default function App(){
           <div className="flex items-center gap-3">
             <div className="w-[28px] h-[28px] bg-black border border-[#222] rounded-[6px] overflow-hidden"><img src={mwLogo} alt="MW" className="w-full h-full object-contain" /></div>
             <div>
-              <div className="text-[11px] font-[800] tracking-[0.16em]">MW • MEASUREMENT WALLET • {billing.plan} • {billing.plan==='FREE' ? '2 CAMPAIGNS • 25 SUBS' : billing.plan==='PRO' ? 'UNLIMITED • 500 SUBS' : 'UNLIMITED • 2000 SUBS'}</div>
-              <div className="text-[10px] mono text-[#5A5A66]">COLLECT GROUP SIZES WITH CONFIDENCE • FRONTEND-ONLY BILLING • mw_billing_v1</div>
+              <div className="text-[11px] font-[800] tracking-[0.16em]">MW • MEASUREMENT WALLET</div>
+              <div className="text-[10px] mono text-[#5A5A66]">COLLECT GROUP SIZES WITH CONFIDENCE</div>
             </div>
           </div>
-          <div className="text-[10px] mono tracking-[0.18em] text-[#4A4A52]">A GEESKIT PRODUCT • BUSINESS • FAMILY • TEAM • EVENT • FACETED • ORANGE GLOW • NO STRIPE</div>
+          <div className="text-[10px] mono tracking-[0.18em] text-[#4A4A52]">A GEESKIT PRODUCT</div>
         </footer>
       </main>
 
