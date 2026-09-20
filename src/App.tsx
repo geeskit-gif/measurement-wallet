@@ -1258,13 +1258,13 @@ export default function App(){
                   <div className="bg-[#101012] border border-[#222] rounded-[16px] p-6 faceted-sm">
                     <div className="flex items-center justify-between">
                       <div className="text-[11px] font-[800] tracking-[0.14em]">CURRENT PLAN</div>
-                      <span className="text-[10px] mono px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[6px] text-[#6A6A72]">mw_billing_v1 • {billing.plan}</span>
+                      <span className="text-[10px] mono px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[6px] text-[#6A6A72]">STRIPE BILLING • {billing.plan}</span>
                     </div>
                     <div className="mt-4 flex items-center gap-4">
                       <div className="w-[48px] h-[48px] bg-[#FF7A18] rounded-[10px] flex items-center justify-center text-black font-[800] text-[18px] shadow-[0_0_20px_rgba(255,122,24,0.3)]">{billing.plan[0]}</div>
                       <div>
                         <div className="text-[18px] font-[800] tracking-[-0.01em]">{billing.plan} PLAN • {billing.interval?.toUpperCase()}</div>
-                        <div className="text-[12px] mono text-[#8A8A90]">Renews {fmtDate(renewalDate)} • {billing.email || 'you@company.com'} • Mock</div>
+                        <div className="text-[12px] mono text-[#8A8A90]">Stripe subscription • {billing.email || 'billing email'}</div>
                       </div>
                     </div>
                     <div className="mt-6 grid grid-cols-2 gap-3">
@@ -1294,12 +1294,12 @@ export default function App(){
                       <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">PLAN</span><span className="font-[700]">{billing.plan}</span></div>
                       <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">STORAGE</span><span>mw_billing_v1</span></div>
                       <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">DEFAULT</span><span>FREE</span></div>
-                      <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">MOCK INVOICES</span><span>3 • PAID</span></div>
+                      <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">INVOICES</span><span>Stripe-managed</span></div>
                     </div>
                   </div>
                   <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[14px] p-5">
-                    <div className="text-[11px] font-[800] tracking-[0.14em] text-[#FF7A18]">FRONTEND-ONLY</div>
-                    <div className="mt-2 text-[11px] leading-[1.6] text-[#6A6A72]">No Stripe integration. No real charge. Plan persisted in localStorage. Payment form accepts 4242 mock card. Cancel → FREE.</div>
+                    <div className="text-[11px] font-[800] tracking-[0.14em] text-[#FF7A18]">STRIPE HOSTED</div>
+                    <div className="mt-2 text-[11px] leading-[1.6] text-[#6A6A72]">Stripe handles checkout, payment methods, invoices and subscription management. No real charge. Plan persisted in localStorage. Payment form accepts 4242 mock card. Cancel → FREE.</div>
                   </div>
                 </div>
               </div>
@@ -1362,17 +1362,17 @@ export default function App(){
                   <div className="mt-5 bg-[#0A0A0C] border border-[#222] rounded-[12px] p-4 flex items-center gap-4">
                     <div className="w-[48px] h-[32px] bg-gradient-to-br from-[#1A1A1E] to-[#0A0A0C] border border-[#222] rounded-[6px] flex items-center justify-center text-[10px] font-[800] tracking-[0.1em]">VISA</div>
                     <div className="flex-1">
-                      <div className="text-[13px] font-[700]">Visa ending in 4242 • Mock • 4242 4242 4242 4242</div>
-                      <div className="text-[11px] mono text-[#6A6A72]">Expires 12/28 • Default • Frontend-only</div>
+                      <div className="text-[13px] font-[700]">Stripe • Payment method managed securely by Stripe</div>
+                      <div className="text-[11px] mono text-[#6A6A72]">Card details are never stored by MW</div>
                     </div>
                     <span className="px-2 py-1 rounded-[6px] bg-[#0F1F0F] border border-[#1E3A1E] text-[10px] font-[800] text-[#5CFF7A]">DEFAULT</span>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">CARDHOLDER</div><div className="text-[12px] font-[600] mt-1">{paymentForm.name}</div></div>
+                    <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">CARDHOLDER</div><div className="text-[12px] font-[600] mt-1">{billing.email || 'Stripe customer'}</div></div>
                     <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">BILLING EMAIL</div><div className="text-[12px] font-[600] mt-1 truncate">{billing.email || billing.email || ''}</div></div>
                   </div>
                   <div className="mt-5 flex gap-2">
-                    <button onClick={()=> setView('payment')} className="flex-1 h-[48px] bg-[#101012] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">ADD NEW METHOD • MOCK</button>
+                    <button onClick={async()=>{try{const d=await apiJson('/billing/portal',{method:'POST'},selectedCampaign?.adminToken);if(d?.url) window.location.href=d.url;}catch{}}} className="flex-1 h-[48px] bg-[#101012] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">MANAGE BILLING IN STRIPE</button>
                   </div>
                   <div className="mt-3 text-[10px] mono text-[#5A5A66] text-center">Stripe handles payment details securely. MW does not store card data.</div>
                 </div>
