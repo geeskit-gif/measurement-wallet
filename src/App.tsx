@@ -964,7 +964,7 @@ export default function App(){
             <div className="text-center space-y-4 pt-2">
               <div className="inline-flex items-center gap-2 bg-[#101012] border border-[#222] rounded-full px-3 py-1">
                 <div className="w-1.5 h-1.5 bg-[#FF7A18] rounded-full shadow-[0_0_6px_#FF7A18]" />
-                <span className="text-[11px] mono tracking-[0.16em] text-[#A0A0A8]">BILLING • FRONTEND ONLY • NO STRIPE • mw_billing_v1</span>
+                <span className="text-[11px] mono tracking-[0.16em] text-[#A0A0A8]">BILLING • STRIPE • HOSTED CHECKOUT</span>
               </div>
               <h1 className="text-[28px] md:text-[44px] font-[800] tracking-[-0.03em] uppercase leading-[0.95]">CHOOSE YOUR PLAN</h1>
               <p className="text-[14px] text-[#8A8A90] max-w-[48ch] mx-auto leading-[1.6]">Start free. Upgrade when you need unlimited campaigns and more submissions. All plans include WhatsApp-ready links, mobile-first forms, CSV export.</p>
@@ -1121,11 +1121,20 @@ export default function App(){
                     <div className="h-px bg-[#1A1A1E]" />
                     <div className="flex justify-between text-[15px] font-[800]"><span>TOTAL</span><span className="text-[#FF7A18]">${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal}.00</span></div>
                   </div>
-                  <button onClick={()=> setView('payment')} className="mt-6 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.3)]">CONTINUE TO PAYMENT →</button>
-                  <div className="mt-3 text-center text-[10px] mono text-[#5A5A66]">Frontend-only • No Stripe • Mock checkout • mw_billing_v1</div>
+                  <button disabled={billingLoading || !selectedCampaign?.adminToken} onClick={async()=>{
+                    if(!selectedCampaign?.adminToken){ setToast('Open an owned group first'); setTimeout(()=>setToast(''),2200); return; }
+                    try{
+                      setBillingLoading(true);
+                      await startStripeCheckout(selectedCampaign.adminToken, paymentForm.email);
+                    }catch(e:any){
+                      setToast(e?.message || 'Unable to start checkout');
+                      setTimeout(()=>setToast(''),2500);
+                    }finally{ setBillingLoading(false); }
+                  }} className="mt-6 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] disabled:opacity-40 disabled:cursor-not-allowed text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.3)]">{billingLoading ? 'OPENING STRIPE CHECKOUT…' : 'CONTINUE TO STRIPE →'}</button>
+                  <div className="mt-3 text-center text-[10px] mono text-[#5A5A66]">SECURE HOSTED CHECKOUT • STRIPE • $9/MONTH</div>
                   <div className="mt-4 flex gap-2 justify-center text-[10px] mono text-[#3A3A44]">
-                    <span className="px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[5px]">VISA • MOCK</span>
-                    <span className="px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[5px]">SECURE • FRONTEND</span>
+                    <span className="px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[5px]">STRIPE • HOSTED</span>
+                    <span className="px-2 py-1 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[5px]">SECURE • NO CARD STORED HERE</span>
                   </div>
                 </div>
                 <button onClick={()=> setView('pricing')} className="w-full h-[48px] bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] text-[11px] mono text-[#6A6A72]">← BACK TO PRICING</button>
@@ -1196,7 +1205,7 @@ export default function App(){
                     <div className="flex justify-between text-[15px] font-[800] pt-2 border-t border-[#1A1A1E]"><span>TOTAL DUE</span><span className="text-[#FF7A18]">${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal}.00</span></div>
                   </div>
                   <button onClick={handlePay} className="mt-6 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] text-black font-[800] tracking-[0.12em] text-[13px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.35)]">PAY ${pricingInterval==='monthly' ? PLAN_PRICING[upgradeTarget].monthly : yearlyTotal} →</button>
-                  <div className="mt-3 flex items-center justify-center gap-2 text-[10px] mono text-[#5A5A66]">🔒 FRONTEND-ONLY • NO STRIPE • MOCK INVOICE</div>
+                  <div className="mt-3 flex items-center justify-center gap-2 text-[10px] mono text-[#5A5A66]">🔒 STRIPE HOSTED CHECKOUT • SECURE PAYMENT</div>
                 </div>
                 <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4">
                   <div className="text-[11px] font-[700] tracking-[0.1em]">WHAT HAPPENS NEXT</div>
@@ -1217,11 +1226,11 @@ export default function App(){
                 </div>
               </div>
               <h1 className="mt-8 text-[22px] md:text-[28px] font-[800] tracking-[0.08em] uppercase">PAYMENT SUCCESSFUL</h1>
-              <p className="mt-3 text-[14px] leading-[1.6] text-[#9A9AA3]">Your <span className="text-[#FF7A18] font-[700]">{billing.plan}</span> plan is now active. Frontend-only mock invoice generated. Stored in <span className="text-[#E8E8EA] font-[600]">mw_billing_v1</span>.</p>
+              <p className="mt-3 text-[14px] leading-[1.6] text-[#9A9AA3]">Your <span className="text-[#FF7A18] font-[700]">{billing.plan}</span> plan is now active. Stripe confirms your subscription.</p>
               <div className="mt-6 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4 text-left">
                 <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">PLAN</span><span className="font-[700]">{billing.plan} • {billing.interval?.toUpperCase()}</span></div>
                 <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">AMOUNT</span><span className="font-[700] text-[#FF7A18]">${billing.plan==='PRO' ? '19.00' : billing.plan==='BUSINESS' ? '49.00' : '0.00'} • PAID • MOCK</span></div>
-                <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">INVOICE</span><span className="font-[600] mono">INV-2025-001 • MOCK</span></div>
+                <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">INVOICE</span><span className="font-[600] mono">STRIPE SUBSCRIPTION</span></div>
               </div>
               <button onClick={()=> setView('dashboard')} className="mt-8 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] text-black font-[800] tracking-[0.12em] text-[13px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.35)]">GO TO DASHBOARD →</button>
               <div className="mt-4 flex gap-2 justify-center">
@@ -1276,7 +1285,7 @@ export default function App(){
                 </div>
                 <div className="bg-[#0A0A0C] border border-[#222] rounded-[14px] p-5">
                   <div className="text-[11px] font-[800] tracking-[0.14em]">PLAN DETAILS</div>
-                  <div className="mt-3 text-[12px] leading-[1.6] text-[#8A8A90]">MW billing is frontend-only. Plan stored in localStorage <span className="text-[#C2C2CA]">mw_billing_v1 {"{plan:'FREE'}"}</span> default FREE. No Stripe. Mock invoices. Cancel sets FREE.</div>
+                  <div className="mt-3 text-[12px] leading-[1.6] text-[#8A8A90]">MW uses secure hosted Stripe Checkout. Your card details are entered on Stripe, not stored by MW.</div>
                 </div>
               </div>
               <div className="space-y-4">
@@ -1450,7 +1459,7 @@ export default function App(){
                   <div className="mt-5 flex gap-2">
                     <button onClick={()=> setView('payment')} className="flex-1 h-[48px] bg-[#101012] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">ADD NEW METHOD • MOCK</button>
                   </div>
-                  <div className="mt-3 text-[10px] mono text-[#5A5A66] text-center">Frontend-only • No Stripe • Stored in UI state • Mock 4242</div>
+                  <div className="mt-3 text-[10px] mono text-[#5A5A66] text-center">Stripe handles payment details securely. MW does not store card data.</div>
                 </div>
               </div>
             )}
