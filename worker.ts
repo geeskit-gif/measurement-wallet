@@ -83,7 +83,7 @@ async function api(r:Request,e:Env):Promise<Response>{
       const supplied=r.headers.get('x-mw-admin-token')||'';
       if(!supplied) return json({error:'Not authorized'},401,origin);
       const ownerKey=await hashToken(supplied);
-      const row=await e.DB.prepare('SELECT status,email,subscription_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      const row=await e.DB.prepare('SELECT status,email,subscription_id,stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
       const active=['active','trialing'].includes(row?.status);
       return json({plan:active?'PRO':'FREE',status:row?.status||'inactive',email:row?.email||'',subscriptionId:row?.subscription_id||''},200,origin);
     }
