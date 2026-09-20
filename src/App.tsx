@@ -368,7 +368,6 @@ const fromSubmissionRow = (row:any): Submission => ({
 
 // ===== COMPONENT =====
 export default function App(){
-  const demo = useMemo(()=> makeDemoCampaigns(), []);
   const [view, setView] = useState<View>('landing');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
