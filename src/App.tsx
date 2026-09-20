@@ -325,8 +325,8 @@ const PLAN_LIMITS: Record<Plan, { campaigns: number; submissions: number; label:
 
 const PLAN_PRICING: Record<Plan, { monthly: number; yearly: number; campaigns: string; submissions: string; popular?: boolean; cta: string; desc: string }> = {
   FREE: { monthly: 0, yearly: 0, campaigns: '2 campaigns', submissions: '25 submissions', cta: 'CURRENT PLAN', desc: 'Perfect to try MW' },
-  PRO: { monthly: 19, yearly: 190, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', popular: true, cta: 'UPGRADE TO PRO', desc: 'For growing teams & families' },
-  BUSINESS: { monthly: 49, yearly: 490, campaigns: 'Unlimited campaigns', submissions: '2000 submissions / mo', cta: 'UPGRADE TO BUSINESS', desc: 'For orgs & high volume' },
+  PRO: { monthly: 9, yearly: 108, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', popular: true, cta: 'UPGRADE TO PRO', desc: 'For growing teams & families' },
+  BUSINESS: { monthly: 0, yearly: 0, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', cta: 'COMING LATER', desc: 'Business plans are coming later' },
 };
 
 const MOCK_INVOICES: Invoice[] = [
@@ -335,6 +335,20 @@ const MOCK_INVOICES: Invoice[] = [
   { id: '3', date: '2025-09-15', plan: 'FREE', amount: '$0.00', status: 'PAID', invoiceId: 'INV-2025-003' },
 ];
 
+
+// ===== REAL STRIPE BILLING =====
+const MW_PRO_PRICE_ID = 'price_1UHqWFEFWL448Vjk8LPdjTzL';
+const startStripeCheckout = async (adminToken:string, email:string) => {
+  const data = await apiJson('/billing/checkout', {method:'POST', body:JSON.stringify({email})}, adminToken);
+  if(data?.url) window.location.href = data.url;
+};
+const refreshBilling = async (adminToken?:string) => {
+  if(!adminToken) return;
+  try {
+    const data = await apiJson('/billing/status', {}, adminToken);
+    if(data?.plan) setBilling({plan:data.plan as Plan, interval:'monthly', email:data.email});
+  } catch {}
+};
 
 // ===== BACKEND API =====
 const API_BASE = '/api';
@@ -381,6 +395,7 @@ export default function App(){
 
   // BILLING STATE
   const [billing, setBilling] = useState<BillingData>({ plan: 'FREE', interval: 'monthly' });
+  const [billingLoading, setBillingLoading] = useState(false);
   const [pricingInterval, setPricingInterval] = useState<BillingInterval>('monthly');
   const [upgradeTarget, setUpgradeTarget] = useState<Plan>('PRO');
   const [billingTab, setBillingTab] = useState<BillingTab>('overview');
