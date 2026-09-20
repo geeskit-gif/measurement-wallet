@@ -103,4 +103,4 @@ async function api(r:Request,e:Env):Promise<Response>{
     return json({error:'Not found'},404,origin);
   }catch(x){return json({ok:false,error:String(x)},500);}
 }
-export default{async fetch(r:Request,e:Env,ctx:ExecutionContext){const u=new URL(r.url);return u.pathname.startsWith('/api/')?api(r,e):e.ASSETS.fetch(r);}};
+export default{async fetch(r:Request,e:Env,ctx:ExecutionContext){const u=new URL(r.url);if(u.hostname==='measurement-wallet.geeskitgsp.workers.dev'&&!u.pathname.startsWith('/api/'))return Response.redirect('https://mw.geeskit.com'+u.pathname+u.search,301);if(u.pathname.startsWith('/api/'))return api(r,e);const asset=await e.ASSETS.fetch(r);if(u.pathname.startsWith('/c/')){const h=new Headers(asset.headers);h.set('X-Robots-Tag','noindex, nofollow');return new Response(asset.body,{status:asset.status,statusText:asset.statusText,headers:h});}return asset;}};
