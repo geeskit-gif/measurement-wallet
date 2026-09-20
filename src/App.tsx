@@ -810,6 +810,32 @@ export default function App(){
               </div>
             </div>
 
+            {campaigns.length > 0 && (
+              <section className="bg-[#101012] border border-[#FF7A18]/20 rounded-[14px] p-5 md:p-6 faceted-sm">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="text-[11px] font-[800] tracking-[0.16em] text-[#FF7A18]">MY GROUPS • {campaigns.length}</div>
+                    <div className="text-[12px] text-[#8A8A90] mt-1">Your groups stay available here on this device.</div>
+                  </div>
+                  <button onClick={()=> setView('dashboard')} className="h-[40px] px-4 bg-[#0A0A0C] border border-[#222] rounded-[9px] text-[11px] font-[800] tracking-[0.1em]">VIEW ALL →</button>
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {campaigns.slice(0,4).map(c=>{
+                    const count=submissions.filter(s=>s.campaignId===c.id).length;
+                    return (
+                      <button key={c.id} onClick={()=>{setSelectedId(c.id);setView('detail');}} className="w-full text-left bg-[#0A0A0C] border border-[#1A1A1E] hover:border-[#2A2A30] rounded-[9px] px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-[700] truncate">{c.name}</div>
+                          <div className="text-[10px] mono text-[#6A6A72] mt-1">{c.context} • {count} {c.context==='FAMILY' ? 'PEOPLE' : 'SUBMISSIONS'} • {c.status}</div>
+                        </div>
+                        <span className="text-[11px] mono text-[#FF7A18] shrink-0">OPEN →</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-[13px] font-[800] tracking-[0.18em]">PRICING • START FREE, UPGRADE WHEN READY</h2>
