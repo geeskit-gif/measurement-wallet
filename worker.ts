@@ -66,7 +66,7 @@ async function api(r:Request,e:Env):Promise<Response>{
       const existing=await e.DB.prepare('SELECT stripe_customer_id,status FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
       let customerId=existing?.stripe_customer_id||'';
       if(!customerId){
-        const customer=await stripeFetch(e,'customers',new URLSearchParams({email:email||'unknown@invalid.local',metadata_owner_key:ownerKey}));
+        const customer=await stripeFetch(e,'customers',new URLSearchParams({email:email||'unknown@invalid.local','metadata[owner_key]':ownerKey,'metadata[product]':'measurement_wallet'}));
         customerId=customer.id;
       }
       const form=new URLSearchParams();
