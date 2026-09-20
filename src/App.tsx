@@ -35,7 +35,7 @@ type Submission = {
 type Plan = 'FREE' | 'PRO' | 'BUSINESS';
 type BillingInterval = 'monthly' | 'yearly';
 type BillingTab = 'overview' | 'invoices' | 'methods' | 'org';
-type View = 'landing' | 'dashboard' | 'create' | 'detail' | 'public' | 'confirmed' | 'pricing' | 'upgrade' | 'payment' | 'payment-success' | 'subscription' | 'billing' | 'limits';
+type View = 'landing' | 'dashboard' | 'create' | 'detail' | 'public' | 'confirmed' | 'pricing' | 'upgrade' | 'payment-success' | 'subscription' | 'billing' | 'limits';
 
 type TemplateDef = {
   key: string;
@@ -483,14 +483,6 @@ export default function App(){
     };
     load();
 
-    try{
-      const billRaw = localStorage.getItem('mw_billing_v1');
-      if(billRaw){
-        const b = JSON.parse(billRaw);
-        if(b.plan) setBilling({ plan: b.plan as Plan, interval: (b.interval as BillingInterval) || 'monthly', email: b.email });
-      }
-    }catch{}
-
     return ()=>{ active=false; };
   },[]);
 
@@ -680,7 +672,6 @@ export default function App(){
     setUpgradeTarget(plan);
     setView('upgrade');
   };
-  const handlePay = () => { setView('pricing'); };
   const handleCancelPlan = () => {
     setBilling({ plan: 'FREE', interval: 'monthly' });
     setToast('Plan cancelled • Back to FREE');
@@ -1121,7 +1112,7 @@ export default function App(){
                     if(!selectedCampaign?.adminToken){ setToast('Open an owned group first'); setTimeout(()=>setToast(''),2200); return; }
                     try{
                       setBillingLoading(true);
-                      await startStripeCheckout(selectedCampaign.adminToken, paymentForm.email);
+                      await startStripeCheckout(selectedCampaign.adminToken, billing.email || '');
                     }catch(e:any){
                       setToast(e?.message || 'Unable to start checkout');
                       setTimeout(()=>setToast(''),2500);
@@ -1203,7 +1194,7 @@ export default function App(){
                     </div>
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">CURRENT PLAN</div><div className="text-[13px] font-[700] mt-1">{billing.plan} • ${billing.plan==='FREE' ? '0' : billing.plan==='PRO' ? '19' : '49'}/mo</div></div>
-                      <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">BILLING EMAIL</div><div className="text-[12px] font-[600] mt-1 truncate">{billing.email || paymentForm.email}</div></div>
+                      <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">BILLING EMAIL</div><div className="text-[12px] font-[600] mt-1 truncate">{billing.email || billing.email || ''}</div></div>
                     </div>
                   </div>
                 </div>
@@ -1378,7 +1369,7 @@ export default function App(){
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">CARDHOLDER</div><div className="text-[12px] font-[600] mt-1">{paymentForm.name}</div></div>
-                    <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">BILLING EMAIL</div><div className="text-[12px] font-[600] mt-1 truncate">{billing.email || paymentForm.email}</div></div>
+                    <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3"><div className="text-[10px] mono text-[#6A6A72]">BILLING EMAIL</div><div className="text-[12px] font-[600] mt-1 truncate">{billing.email || billing.email || ''}</div></div>
                   </div>
                   <div className="mt-5 flex gap-2">
                     <button onClick={()=> setView('payment')} className="flex-1 h-[48px] bg-[#101012] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">ADD NEW METHOD • MOCK</button>
