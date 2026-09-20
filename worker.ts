@@ -84,8 +84,23 @@ async function api(r:Request,e:Env):Promise<Response>{
       if(!supplied) return json({error:'Not authorized'},401,origin);
       const ownerKey=await hashToken(supplied);
       const row=await e.DB.prepare('SELECT status,email,subscription_id,stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
-      const active=['active','trialing'].includes(row?.status);
-      return json({plan:active?'PRO':'FREE',status:row?.status||'inactive',email:row?.email||'',subscriptionId:row?.subscription_id||''},200,origin);
+      let status=row?.status||'inactive';
+      let subscriptionId=row?.subscription_id||'';
+      if(row?.stripe_customer_id){
+        try{
+          const qs=new URLSearchParams({customer:row.stripe_customer_id,status:'all',limit:'10'});
+          const subs=await stripeFetch(e,'subscriptions?'+qs.toString());
+          const matching=(subs?.data||[]).find((s:any)=>s?.metadata?.owner_key===ownerKey||s?.items?.data?.some((i:any)=>i?.price?.id==='price_1UHqWFEFWL448Vjk8LPdjTzL'));
+          if(matching){
+            status=matching.status||'inactive';
+            subscriptionId=matching.id||subscriptionId;
+            await e.DB.prepare('UPDATE billing SET subscription_id=?,status=?,updated_at=? WHERE owner_key=?')
+              .bind(subscriptionId,status,new Date().toISOString(),ownerKey).run();
+          }
+        }catch{}
+      }
+      const active=['active','trialing'].includes(status);
+      return json({plan:active?'PRO':'FREE',status,email:row?.email||'',subscriptionId},200,origin);
     }
     if(p==='/api/billing/portal'&&r.method==='POST'){
       const supplied=r.headers.get('x-mw-admin-token')||'';
