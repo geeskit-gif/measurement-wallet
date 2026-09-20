@@ -2,6 +2,7 @@ const SCHEMA=`CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY,name TEX
 interface Env{DB:D1Database;ASSETS:Fetcher}
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json','cache-control':'no-store','access-control-allow-origin':'*'}});
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
+async function hashToken(value:string){const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
 async function setup(db:D1Database){
   for(const s of SCHEMA.split(';').map(x=>x.trim()).filter(Boolean)) await db.prepare(s).run();
   try{await db.prepare("ALTER TABLE campaigns ADD COLUMN admin_token TEXT NOT NULL DEFAULT ''").run();}catch{}
@@ -13,7 +14,8 @@ async function readJson(r:Request){try{return await r.json() as any;}catch{retur
 async function adminCampaign(db:D1Database,id:string,r:Request){
   const supplied=r.headers.get('x-mw-admin-token')||'';
   if(!supplied) return null;
-  return await db.prepare('SELECT id,name,organization,description,deadline,status,fields_json,created_at,share_token,context,admin_token FROM campaigns WHERE id=? AND admin_token=?').bind(id,supplied).first();
+  const hashed=await hashToken(supplied);
+  return await db.prepare('SELECT id,name,organization,description,deadline,status,fields_json,created_at,share_token,context FROM campaigns WHERE id=? AND admin_token=?').bind(id,hashed).first();
 }
 async function api(r:Request,e:Env):Promise<Response>{
   const u=new URL(r.url),p=u.pathname;
@@ -30,9 +32,9 @@ async function api(r:Request,e:Env):Promise<Response>{
     if(p==='/api/campaigns'&&r.method==='POST'){
       const b=await readJson(r),c=b?.campaign??b;
       if(!c?.name) return json({error:'Campaign name is required'},400);
-      const id=c.id??crypto.randomUUID(),shareToken=c.shareToken??Array.from(crypto.getRandomValues(new Uint8Array(5)),b=>b.toString(36)).join('').slice(0,8).toUpperCase(),adminToken=token();
+      const id=c.id??crypto.randomUUID(),shareToken=c.shareToken??Array.from(crypto.getRandomValues(new Uint8Array(5)),b=>b.toString(36)).join('').slice(0,8).toUpperCase(),adminToken=token(),adminTokenHash=await hashToken(adminToken);
       await e.DB.prepare('INSERT INTO campaigns (id,name,organization,description,deadline,status,fields_json,created_at,share_token,context,admin_token) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-        .bind(id,c.name,c.organization??'',c.description??'',c.deadline??'',c.status??'OPEN',JSON.stringify(c.fields??[]),c.createdAt??new Date().toISOString(),shareToken,c.context??'BUSINESS',adminToken).run();
+        .bind(id,c.name,c.organization??'',c.description??'',c.deadline??'',c.status??'OPEN',JSON.stringify(c.fields??[]),c.createdAt??new Date().toISOString(),shareToken,c.context??'BUSINESS',adminTokenHash).run();
       return json({ok:true,id,adminToken});
     }
 
