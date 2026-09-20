@@ -37,7 +37,7 @@ async function adminCampaign(db:D1Database,id:string,r:Request){
 async function api(r:Request,e:Env):Promise<Response>{
   const u=new URL(r.url),p=u.pathname;
   const origin=allowedOrigin(r);
-  if(r.method==='OPTIONS') return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-methods':'GET,POST,PUT,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,X-MW-Admin-Token','vary':'Origin'}});
+  if(r.method==='OPTIONS') return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-methods':'GET,POST,PUT,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,X-MW-Admin-Token,X-MW-Owner-Key','vary':'Origin'}});
   if(p==='/api/health'&&r.method==='GET'){
     try{await e.DB.prepare('SELECT 1').first();return json({ok:true,service:'measurement-wallet-api',database:'connected'},200,origin);}
     catch{return json({ok:false,database:'unavailable'},503,origin);}
@@ -119,8 +119,9 @@ async function api(r:Request,e:Env):Promise<Response>{
     if(p==='/api/billing/portal'&&r.method==='POST'){
       const supplied=r.headers.get('x-mw-admin-token')||'';
       if(!supplied) return json({error:'Not authorized'},401,origin);
-      const ownerKey=await hashToken(supplied);
-      const row=await e.DB.prepare('SELECT stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      const durableOwnerKey=cleanText(r.headers.get('x-mw-owner-key'),128); const legacyOwnerKey=await hashToken(supplied); const ownerKey=durableOwnerKey||legacyOwnerKey;
+      let row=await e.DB.prepare('SELECT stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
+      if(!row && durableOwnerKey){ row=await e.DB.prepare('SELECT stripe_customer_id FROM billing WHERE owner_key=?').bind(legacyOwnerKey).first() as any; }
       if(!row?.stripe_customer_id) return json({error:'No Stripe customer found'},404,origin);
       const form=new URLSearchParams({customer:row.stripe_customer_id,return_url:'https://mw.geeskit.com/'});
       const session=await stripeFetch(e,'billing_portal/sessions',form);
