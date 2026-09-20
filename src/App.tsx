@@ -334,6 +334,37 @@ const MOCK_INVOICES: Invoice[] = [
   { id: '3', date: '2025-09-15', plan: 'FREE', amount: '$0.00', status: 'PAID', invoiceId: 'INV-2025-003' },
 ];
 
+
+// ===== BACKEND API =====
+const API_BASE = '/api';
+const apiJson = async (path:string, options:RequestInit = {}) => {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { 'Content-Type':'application/json', ...(options.headers || {}) },
+  });
+  const data = await res.json().catch(()=>null);
+  if(!res.ok) throw new Error(data?.error || `API request failed: ${res.status}`);
+  return data;
+};
+const fromCampaignRow = (row:any): Campaign => ({
+  id: row.id,
+  name: row.name ?? '',
+  organization: row.organization ?? '',
+  description: row.description ?? '',
+  deadline: row.deadline ?? '',
+  status: row.status as CampaignStatus,
+  fields: typeof row.fields_json === 'string' ? JSON.parse(row.fields_json || '[]') : (row.fields || []),
+  createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+  shareToken: row.share_token ?? row.shareToken ?? '',
+  context: (row.context as UseContextType) || 'BUSINESS',
+});
+const fromSubmissionRow = (row:any): Submission => ({
+  id: row.id,
+  campaignId: row.campaign_id ?? row.campaignId,
+  submittedAt: row.submitted_at ?? row.submittedAt ?? new Date().toISOString(),
+  values: typeof row.values_json === 'string' ? JSON.parse(row.values_json || '{}') : (row.values || {}),
+});
+
 // ===== COMPONENT =====
 export default function App(){
   const demo = useMemo(()=> makeDemoCampaigns(), []);
@@ -376,35 +407,97 @@ export default function App(){
   const [publicValues, setPublicValues] = useState<Record<string,string>>({});
   const [publicErrors, setPublicErrors] = useState<Record<string,string>>({});
 
-  // LOAD FROM LOCAL STORAGE
+  // LOAD / SYNC FROM CLOUDFLARE D1
+  const [backendReady, setBackendReady] = useState(false);
+
   useEffect(()=>{
-    try{
-      const raw = localStorage.getItem('mw_campaigns_v1');
-      if(raw){
-        const parsed = JSON.parse(raw);
-        if(parsed.campaigns && Array.isArray(parsed.campaigns) && parsed.campaigns.length>0){
-          const migrated = parsed.campaigns.map((c:any)=> ({
-            ...c,
-            context: (c.context as UseContextType) || 'BUSINESS',
-            organization: c.organization ?? '',
-          }));
-          setCampaigns(migrated);
-          setSubmissions(parsed.submissions || []);
-          if(migrated[0]) setSelectedId(migrated[0].id);
+    let active = true;
+    const pathMatch = window.location.pathname.match(/^\/c\/([^/]+)$/);
+    if(pathMatch) {
+      setPublicToken(pathMatch[1]);
+      setView('public');
+    }
+
+    const load = async () => {
+      let localData:any = null;
+      try {
+        const raw = localStorage.getItem('mw_campaigns_v1');
+        if(raw) localData = JSON.parse(raw);
+      } catch {}
+
+      try {
+        const rows = await apiJson('/campaigns');
+        if(Array.isArray(rows) && rows.length > 0) {
+          const details = await Promise.all(rows.map(async (row:any) => apiJson(`/campaigns/${encodeURIComponent(row.id)}`)));
+          const loadedCampaigns = details.map((d:any)=>fromCampaignRow(d.campaign));
+          const loadedSubmissions = details.flatMap((d:any)=>(d.submissions || []).map(fromSubmissionRow));
+          if(active) {
+            setCampaigns(loadedCampaigns);
+            setSubmissions(loadedSubmissions);
+            if(loadedCampaigns[0] && !pathMatch) setSelectedId(loadedCampaigns[0].id);
+          }
+        } else {
+          const sourceCampaigns = Array.isArray(localData?.campaigns) && localData.campaigns.length
+            ? localData.campaigns.map((x:any)=>({...x, context:(x.context as UseContextType)||'BUSINESS', organization:x.organization??''}))
+            : demo.campaigns;
+          const sourceSubmissions = Array.isArray(localData?.submissions) ? localData.submissions : demo.submissions;
+
+          for(const campaign of sourceCampaigns) {
+            await apiJson(`/campaigns/${encodeURIComponent(campaign.id)}`, { method:'POST', body:JSON.stringify({campaign}) });
+          }
+          for(const submission of sourceSubmissions) {
+            await apiJson('/submissions', { method:'POST', body:JSON.stringify({submission}) });
+          }
+          if(active) {
+            setCampaigns(sourceCampaigns);
+            setSubmissions(sourceSubmissions);
+            if(sourceCampaigns[0] && !pathMatch) setSelectedId(sourceCampaigns[0].id);
+          }
         }
+      } catch {
+        const fallback = Array.isArray(localData?.campaigns) && localData.campaigns.length
+          ? localData
+          : demo;
+        if(active) {
+          setCampaigns(fallback.campaigns);
+          setSubmissions(fallback.submissions || []);
+          if(fallback.campaigns[0] && !pathMatch) setSelectedId(fallback.campaigns[0].id);
+        }
+      } finally {
+        if(active) setBackendReady(true);
       }
+    };
+    load();
+
+    try{
       const billRaw = localStorage.getItem('mw_billing_v1');
       if(billRaw){
         const b = JSON.parse(billRaw);
         if(b.plan) setBilling({ plan: b.plan as Plan, interval: (b.interval as BillingInterval) || 'monthly', email: b.email });
       }
     }catch{}
-  },[]);
+
+    return ()=>{ active=false; };
+  },[demo]);
+
   useEffect(()=>{
+    if(!backendReady) return;
     try{
       localStorage.setItem('mw_campaigns_v1', JSON.stringify({campaigns, submissions}));
     }catch{}
-  },[campaigns, submissions]);
+  },[campaigns, submissions, backendReady]);
+
+  useEffect(()=>{
+    if(!publicToken) return;
+    if(campaigns.some(c=>c.shareToken===publicToken)) return;
+    apiJson(`/campaigns/share/${encodeURIComponent(publicToken)}`)
+      .then((row:any)=>{
+        const campaign=fromCampaignRow(row);
+        setCampaigns(prev=>prev.some(c=>c.id===campaign.id)?prev:[campaign,...prev]);
+        setSelectedId(campaign.id);
+      })
+      .catch(()=>{});
+  },[publicToken, campaigns]);
   useEffect(()=>{
     try{
       localStorage.setItem('mw_billing_v1', JSON.stringify(billing));
@@ -448,7 +541,7 @@ export default function App(){
     setCreateStep(1);
     setView('create');
   };
-  const handleCreateCampaign = () => {
+  const handleCreateCampaign = async () => {
     const isFamily = createContext==='FAMILY';
     const isBusiness = createContext==='BUSINESS';
     if(!createForm.name.trim()){
@@ -482,6 +575,13 @@ export default function App(){
       shareToken: genToken(),
       context: createContext,
     };
+    try {
+      await apiJson(`/campaigns/${encodeURIComponent(newCamp.id)}`, { method:'POST', body:JSON.stringify({campaign:newCamp}) });
+    } catch {
+      setToast('Could not save to MW server');
+      setTimeout(()=>setToast(''),2500);
+      return;
+    }
     setCampaigns(prev=>[newCamp, ...prev]);
     setSelectedId(newCamp.id);
     setCreateForm({name:'', org:'', desc:'', deadline:''});
@@ -493,8 +593,17 @@ export default function App(){
     setToast(createContext==='FAMILY' ? 'Group created' : 'Campaign created');
     setTimeout(()=>setToast(''),2000);
   };
-  const toggleStatus = (id:string) => {
-    setCampaigns(prev=> prev.map(c=> c.id===id ? {...c, status: c.status==='OPEN' ? 'CLOSED' : 'OPEN' as CampaignStatus } : c));
+  const toggleStatus = async (id:string) => {
+    const current = campaigns.find(c=>c.id===id);
+    if(!current) return;
+    const updated = {...current, status: current.status==='OPEN' ? 'CLOSED' as CampaignStatus : 'OPEN' as CampaignStatus};
+    try {
+      await apiJson(`/campaigns/${encodeURIComponent(id)}`, { method:'PUT', body:JSON.stringify({campaign:updated}) });
+      setCampaigns(prev=>prev.map(c=>c.id===id?updated:c));
+    } catch {
+      setToast('Could not save status');
+      setTimeout(()=>setToast(''),2000);
+    }
   };
   const copyLink = async (token:string) => {
     const url = `https://mw.geeskit.com/c/${token}`;
@@ -503,7 +612,7 @@ export default function App(){
     setToast('Link copied');
     setTimeout(()=>{ setCopied(false); setToast(''); },1800);
   };
-  const handlePublicSubmit = () => {
+  const handlePublicSubmit = async () => {
     if(!publicCampaign) return;
     const errs: Record<string,string> = {};
     publicCampaign.fields.forEach(f=>{
@@ -522,6 +631,13 @@ export default function App(){
       submittedAt: new Date().toISOString(),
       values: {...publicValues},
     };
+    try {
+      await apiJson('/submissions', { method:'POST', body:JSON.stringify({submission:newSub}) });
+    } catch {
+      setToast('Could not save submission');
+      setTimeout(()=>setToast(''),2500);
+      return;
+    }
     setSubmissions(prev=> [newSub, ...prev]);
     setPublicValues({});
     setView('confirmed');
