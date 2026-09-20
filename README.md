@@ -16,7 +16,7 @@ MW collects group sizes and measurements from multiple people and keeps response
 - Review and search submissions
 - CSV export
 - Cloudflare Worker API + Cloudflare D1 persistence
-- Campaign-specific server-issued admin credentials stored locally in the organizer's browser
+- Campaign-specific server-issued admin credentials; optional private owner links can reconnect a group on another device
 - Server-side validation that public submissions can only be made to existing OPEN campaigns
 - No automatic demo data is seeded into production
 
@@ -55,8 +55,8 @@ Organizer requests send `X-MW-Admin-Token`. The admin token is never exposed by 
 - Tailwind CSS
 - Cloudflare Worker
 - Cloudflare D1
-- localStorage for the organizer's local ownership tokens and billing UI state
-- Frontend billing remains a mock UI; no Stripe integration yet
+- localStorage for organizer ownership tokens and billing UI state; D1 remains the source of truth for campaign and submission data
+- Billing UI is still a mock layer; real payment processing is intentionally separate from the D1 data layer
 
 ## Data model
 ```ts
