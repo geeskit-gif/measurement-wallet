@@ -337,7 +337,7 @@ const MOCK_INVOICES: Invoice[] = [
 
 
 // ===== REAL STRIPE BILLING =====
-const MW_PRO_PRICE_ID = 'price_1UHqWFEFWL448Vjk8LPdjTzL';
+const MW_PRO_PRICE_ID = 'price_1UHvf2CMdtEyhy9yDTNSGK30';
 const startStripeCheckout = async (adminToken:string, email:string) => {
   const data = await apiJson('/billing/checkout', {method:'POST', body:JSON.stringify({email})}, adminToken);
   if(data?.url) window.location.href = data.url;
