@@ -19,7 +19,7 @@ async function getOwnerPlan(db:D1Database,e:Env,ownerKey:string){
   if(!ownerKey) return 'FREE';
   const row=await db.prepare('SELECT status,stripe_customer_id FROM billing WHERE owner_key=?').bind(ownerKey).first() as any;
   let status=row?.status||'inactive';
-  if(row?.stripe_customer_id){try{const qs=new URLSearchParams({customer:row.stripe_customer_id,status:'all',limit:'10'});const subs=await stripeFetch(e,'subscriptions?'+qs.toString());const matching=(subs?.data||[]).find((s:any)=>s?.metadata?.product==='measurement_wallet'||s?.items?.data?.some((i:any)=>i?.price?.id==='price_1UHqWFEFWL448Vjk8LPdjTzL'));if(matching){status=matching.status||status;await db.prepare('UPDATE billing SET subscription_id=?,status=?,updated_at=? WHERE owner_key=?').bind(matching.id||'',status,new Date().toISOString(),ownerKey).run();}}catch{}}
+  if(row?.stripe_customer_id){try{const qs=new URLSearchParams({customer:row.stripe_customer_id,status:'all',limit:'10'});const subs=await stripeFetch(e,'subscriptions?'+qs.toString());const matching=(subs?.data||[]).find((s:any)=>s?.metadata?.product==='measurement_wallet'||s?.items?.data?.some((i:any)=>i?.price?.id==='price_1UHvf2CMdtEyhy9yDTNSGK30'));if(matching){status=matching.status||status;await db.prepare('UPDATE billing SET subscription_id=?,status=?,updated_at=? WHERE owner_key=?').bind(matching.id||'',status,new Date().toISOString(),ownerKey).run();}}catch{}}
   return ['active','trialing'].includes(status)?'PRO':'FREE';
 }
 async function readJson(r:Request){try{return await r.json() as any;}catch{return null;}}
@@ -83,7 +83,7 @@ async function api(r:Request,e:Env):Promise<Response>{
         customerId=customer.id;
       }
       const form=new URLSearchParams();
-      form.set('mode','subscription'); form.set('customer',customerId); form.set('line_items[0][price]','price_1UHqWFEFWL448Vjk8LPdjTzL'); form.set('line_items[0][quantity]','1');
+      form.set('mode','subscription'); form.set('customer',customerId); form.set('line_items[0][price]','price_1UHvf2CMdtEyhy9yDTNSGK30'); form.set('line_items[0][quantity]','1');
       form.set('success_url','https://mw.geeskit.com/?billing=success'); form.set('cancel_url','https://mw.geeskit.com/?billing=cancelled');
       form.set('client_reference_id',ownerKey); form.set('metadata[owner_key]',ownerKey); form.set('metadata[product]','measurement_wallet');
       form.set('subscription_data[metadata][owner_key]',ownerKey); form.set('subscription_data[metadata][product]','measurement_wallet');
@@ -104,7 +104,7 @@ async function api(r:Request,e:Env):Promise<Response>{
         try{
           const qs=new URLSearchParams({customer:row.stripe_customer_id,status:'all',limit:'10'});
           const subs=await stripeFetch(e,'subscriptions?'+qs.toString());
-          const matching=(subs?.data||[]).find((s:any)=>s?.metadata?.owner_key===ownerKey||s?.items?.data?.some((i:any)=>i?.price?.id==='price_1UHqWFEFWL448Vjk8LPdjTzL'));
+          const matching=(subs?.data||[]).find((s:any)=>s?.metadata?.owner_key===ownerKey||s?.items?.data?.some((i:any)=>i?.price?.id==='price_1UHvf2CMdtEyhy9yDTNSGK30'));
           if(matching){
             status=matching.status||'inactive';
             subscriptionId=matching.id||subscriptionId;
