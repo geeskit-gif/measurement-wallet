@@ -1848,7 +1848,7 @@ export default function App(){
                   <div className="w-[36px] h-[36px] bg-black border border-[#222] rounded-[8px] overflow-hidden flex-shrink-0"><img src={mwLogo} alt="mw" className="w-full h-full object-contain" /></div>
                   <div className="min-w-0">
                     <div className="text-[11px] font-[700] tracking-[0.1em]">A GEESKIT PRODUCT • {billing.plan}</div>
-                    <div className="text-[11px] leading-[1.5] text-[#6A6A72] mt-1">{selectedCampaign.context==='FAMILY' ? 'Family mode keeps it warm, simple, and WhatsApp-ready. Same MW reliability.' : 'MW keeps group sizes organized with confidence.'} • Frontend billing only.</div>
+                    <div className="text-[11px] leading-[1.5] text-[#6A6A72] mt-1">{selectedCampaign.context==='FAMILY' ? 'Family mode keeps it warm, simple, and WhatsApp-ready. Same MW reliability.' : 'MW keeps group sizes organized with confidence.'} • Stripe billing • secure hosted checkout.</div>
                   </div>
                 </div>
               </div>
