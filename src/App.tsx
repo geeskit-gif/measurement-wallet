@@ -318,13 +318,13 @@ const downloadBlob = (content:string, filename:string) => {
 
 // ===== BILLING CONFIG =====
 const PLAN_LIMITS: Record<Plan, { campaigns: number; submissions: number; label: string }> = {
-  FREE: { campaigns: 2, submissions: 25, label: 'FREE' },
+  FREE: { campaigns: 1, submissions: 5, label: 'FREE' },
   PRO: { campaigns: 9999, submissions: 500, label: 'PRO' },
   BUSINESS: { campaigns: 9999, submissions: 2000, label: 'BUSINESS' },
 };
 
 const PLAN_PRICING: Record<Plan, { monthly: number; yearly: number; campaigns: string; submissions: string; popular?: boolean; cta: string; desc: string }> = {
-  FREE: { monthly: 0, yearly: 0, campaigns: '2 campaigns', submissions: '25 submissions', cta: 'START FREE', desc: 'Free forever • No card' },
+  FREE: { monthly: 0, yearly: 0, campaigns: '1 group', submissions: '5 submissions', cta: 'START FREE', desc: 'Free forever • No card' },
   PRO: { monthly: 9, yearly: 108, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', popular: true, cta: 'UPGRADE TO PRO', desc: 'For growing teams & families' },
   BUSINESS: { monthly: 0, yearly: 0, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', cta: 'COMING LATER', desc: 'Business plans are coming later' },
 };
