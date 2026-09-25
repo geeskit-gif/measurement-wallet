@@ -324,7 +324,7 @@ const PLAN_LIMITS: Record<Plan, { campaigns: number; submissions: number; label:
 };
 
 const PLAN_PRICING: Record<Plan, { monthly: number; yearly: number; campaigns: string; submissions: string; popular?: boolean; cta: string; desc: string }> = {
-  FREE: { monthly: 0, yearly: 0, campaigns: '2 campaigns', submissions: '25 submissions', cta: 'CURRENT PLAN', desc: 'Perfect to try MW' },
+  FREE: { monthly: 0, yearly: 0, campaigns: '2 campaigns', submissions: '25 submissions', cta: 'START FREE', desc: 'Free forever • No card' },
   PRO: { monthly: 9, yearly: 108, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', popular: true, cta: 'UPGRADE TO PRO', desc: 'For growing teams & families' },
   BUSINESS: { monthly: 0, yearly: 0, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', cta: 'COMING LATER', desc: 'Business plans are coming later' },
 };
@@ -835,11 +835,11 @@ export default function App(){
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-[13px] font-[800] tracking-[0.18em]">PRICING • START FREE, UPGRADE WHEN READY</h2>
+                <h2 className="text-[13px] font-[800] tracking-[0.18em]">START FREE • UPGRADE WHEN YOU NEED MORE</h2>
                 <button onClick={()=> setView('pricing')} className="text-[11px] mono text-[#FF7A18] hover:text-[#FF8A2E]">VIEW ALL PRICING →</button>
               </div>
-              <div className="grid md:grid-cols-3 gap-3">
-                {(['FREE','PRO','BUSINESS'] as Plan[]).map(plan=>{
+              <div className="grid md:grid-cols-2 gap-3">
+                {(['FREE','PRO'] as Plan[]).map(plan=>{
                   const p = PLAN_PRICING[plan];
                   const isCurrent = billing.plan===plan;
                   return (
@@ -940,8 +940,8 @@ export default function App(){
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
-              {(['FREE','PRO','BUSINESS'] as Plan[]).map(plan=>{
+            <div className="grid md:grid-cols-2 gap-4">
+              {(['FREE','PRO'] as Plan[]).map(plan=>{
                 const p = PLAN_PRICING[plan];
                 const price = pricingInterval==='monthly' ? p.monthly : Math.round(p.yearly/12);
                 const isPopular = p.popular;
@@ -970,7 +970,7 @@ export default function App(){
                       {plan==='BUSINESS' && <div className="flex gap-2"><span className="text-[#FF7A18]">✓</span><span className="text-[#9A9AA3]">2000 subs • Organization billing</span></div>}
                     </div>
                     <div className="mt-6">
-                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} disabled={isCurrent} className={`w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-all ${isCurrent ? 'bg-[#1A1A1E] border border-[#222] text-[#5A5A66]' : plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_24px_rgba(255,122,24,0.35)] hover:bg-[#FF8A2E]' : 'bg-[#0A0A0C] border border-[#222] text-[#E8E8EA] hover:border-[#2A2A30]'}`}>{p.cta}</button>
+                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} disabled={false} className={`w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-all ${isCurrent ? 'bg-[#1A1A1E] border border-[#222] text-[#5A5A66]' : plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_24px_rgba(255,122,24,0.35)] hover:bg-[#FF8A2E]' : 'bg-[#0A0A0C] border border-[#222] text-[#E8E8EA] hover:border-[#2A2A30]'}`}>{p.cta}</button>
                       <div className="mt-3 text-center text-[10px] mono text-[#5A5A66]">{p.desc}</div>
                     </div>
                   </div>
@@ -989,24 +989,22 @@ export default function App(){
                     <th className="px-7 py-4 text-[11px] font-[700] tracking-[0.12em] text-[#6A6A72]">FEATURE</th>
                     <th className="px-7 py-4 text-[11px] font-[700] tracking-[0.12em] text-[#6A6A72]">FREE</th>
                     <th className="px-7 py-4 text-[11px] font-[700] tracking-[0.12em] text-[#FF7A18]">PRO • POPULAR</th>
-                    <th className="px-7 py-4 text-[11px] font-[700] tracking-[0.12em] text-[#6A6A72]">BUSINESS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#141416] text-[13px]">
                   {[
-                    ['Campaigns', '2', 'Unlimited', 'Unlimited'],
-                    ['Submissions', '25 total', '500 / month', '2000 / month'],
-                    ['Share Links', '✓', '✓', '✓'],
-                    ['CSV Export', '✓', '✓', '✓'],
-                    ['WhatsApp Ready', '✓', '✓', '✓'],
-                    ['Organization Billing', '—', '—', '✓'],
-                    ['Priority Support', '—', '✓', '✓'],
+                    ['Campaigns', '2', 'Unlimited'],
+                    ['Submissions', '25 total', '500 / month'],
+                    ['Share Links', '✓', '✓'],
+                    ['CSV Export', '✓', '✓'],
+                    ['WhatsApp Ready', '✓', '✓'],
+                    ['Organization Billing', '—', '—'],
+                    ['Priority Support', '—', '✓'],
                   ].map(row=>(
                     <tr key={row[0]} className="hover:bg-[#101012]/50">
                       <td className="px-7 py-3.5 font-[600] text-[#C2C2CA]">{row[0]}</td>
                       <td className="px-7 py-3.5 text-[#8A8A90]">{row[1]}</td>
                       <td className="px-7 py-3.5 text-[#E8E8EA] font-[600]">{row[2]}</td>
-                      <td className="px-7 py-3.5 text-[#8A8A90]">{row[3]}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1014,16 +1012,15 @@ export default function App(){
             </div>
             <div className="md:hidden grid gap-3">
               {[
-                {feat:'Campaigns', free:'2', pro:'Unlimited', biz:'Unlimited'},
-                {feat:'Submissions', free:'25 total', pro:'500 / mo', biz:'2000 / mo'},
-                {feat:'CSV Export & WhatsApp', free:'✓ Included', pro:'✓ Included', biz:'✓ Included'},
+                {feat:'Campaigns', free:'2', pro:'Unlimited'},
+                {feat:'Submissions', free:'25 total', pro:'500 / mo'},
+                {feat:'CSV Export & WhatsApp', free:'✓ Included', pro:'✓ Included'},
               ].map(r=>(
                 <div key={r.feat} className="bg-[#101012] border border-[#222] rounded-[12px] p-4">
                   <div className="text-[11px] font-[800] tracking-[0.12em]">{r.feat}</div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] mono">
                     <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[8px] p-2"><div className="text-[#6A6A72]">FREE</div><div className="mt-1 font-[700] text-[#C2C2CA]">{r.free}</div></div>
                     <div className="bg-[#1A120E] border border-[#FF7A18]/20 rounded-[8px] p-2"><div className="text-[#FF7A18]">PRO</div><div className="mt-1 font-[700] text-[#E8E8EA]">{r.pro}</div></div>
-                    <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[8px] p-2"><div className="text-[#6A6A72]">BUSINESS</div><div className="mt-1 font-[700] text-[#C2C2CA]">{r.biz}</div></div>
                   </div>
                 </div>
               ))}
