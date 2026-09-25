@@ -841,7 +841,6 @@ export default function App(){
               <div className="grid md:grid-cols-2 gap-3">
                 {(['FREE','PRO'] as Plan[]).map(plan=>{
                   const p = PLAN_PRICING[plan];
-                  const isCurrent = billing.plan===plan;
                   return (
                     <div key={plan} className={`bg-[#101012] border rounded-[14px] p-5 faceted-sm relative overflow-hidden ${plan==='PRO' ? 'border-[#FF7A18]/40 shadow-[0_0_24px_rgba(255,122,24,0.15)]' : 'border-[#222]'}`}>
                       {p.popular && <div className="absolute top-0 right-0 bg-[#FF7A18] text-black text-[10px] font-[800] tracking-[0.12em] px-3 py-1 rounded-bl-[8px]">POPULAR</div>}
@@ -1018,7 +1017,7 @@ export default function App(){
               ].map(r=>(
                 <div key={r.feat} className="bg-[#101012] border border-[#222] rounded-[12px] p-4">
                   <div className="text-[11px] font-[800] tracking-[0.12em]">{r.feat}</div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] mono">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] mono">
                     <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[8px] p-2"><div className="text-[#6A6A72]">FREE</div><div className="mt-1 font-[700] text-[#C2C2CA]">{r.free}</div></div>
                     <div className="bg-[#1A120E] border border-[#FF7A18]/20 rounded-[8px] p-2"><div className="text-[#FF7A18]">PRO</div><div className="mt-1 font-[700] text-[#E8E8EA]">{r.pro}</div></div>
                   </div>
