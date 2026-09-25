@@ -387,6 +387,7 @@ export default function App(){
   const [search, setSearch] = useState('');
   const [showAllSubs, setShowAllSubs] = useState(false);
   const [toast, setToast] = useState<string>('');
+  const [limitType, setLimitType] = useState<'campaigns' | 'submissions' | 'export'>('campaigns');
   const [filterCtx, setFilterCtx] = useState<'ALL' | UseContextType>('ALL');
 
   // BILLING STATE
@@ -527,6 +528,7 @@ export default function App(){
   };
   const openCreate = (ctx?: UseContextType) => {
     if(isFreeLimitReached){
+      setLimitType('campaigns');
       setView('limits');
       setToast('Campaign limit reached');
       setTimeout(()=>setToast(''),2500);
@@ -555,6 +557,7 @@ export default function App(){
       return;
     }
     if(isFreeLimitReached){
+      setLimitType('campaigns');
       setView('limits');
       return;
     }
@@ -640,7 +643,12 @@ export default function App(){
     try {
       const saved = await apiJson(`/campaigns/share/${encodeURIComponent(publicCampaign.shareToken)}/submissions`, { method:'POST', body:JSON.stringify({submission:newSub}) });
       newSub.id = saved.id || newSub.id;
-    } catch {
+    } catch (err) {
+      if(err instanceof Error && err.message.toLowerCase().includes('submission limit reached')){
+        setLimitType('submissions');
+        setView('limits');
+        return;
+      }
       setToast('Could not save submission');
       setTimeout(()=>setToast(''),2500);
       return;
@@ -650,6 +658,11 @@ export default function App(){
     setView('confirmed');
   };
   const doExport = (camp: Campaign) => {
+    if(billing.plan==='FREE'){
+      setLimitType('export');
+      setView('limits');
+      return;
+    }
     const subs = submissions.filter(s=> s.campaignId===camp.id);
     if(subs.length===0){
       setToast('No submissions to export');
@@ -794,7 +807,7 @@ export default function App(){
                 <div className="flex items-center gap-6 pt-2 text-[11px] mono flex-wrap">
                   <span className="text-[#6A6A72]">NO ACCOUNTS FOR PARTICIPANTS</span>
                   <span className="w-px h-3 bg-[#222] hidden md:block" />
-                  <span className="text-[#6A6A72]">CSV EXPORT • MOBILE FIRST • WHATSAPP READY</span>
+                  <span className="text-[#6A6A72]">MOBILE FIRST • WHATSAPP READY</span>
                 </div>
               </div>
               <div className="relative min-w-0">
@@ -1340,8 +1353,8 @@ export default function App(){
               <div className="relative flex gap-4">
                 <div className="w-[48px] h-[48px] bg-[#FF7A18]/15 border border-[#FF7A18]/30 rounded-[12px] flex items-center justify-center text-[#FF7A18] font-[800] text-[20px] shadow-[0_0_20px_rgba(255,122,24,0.2)]">!</div>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-[18px] md:text-[22px] font-[800] tracking-[0.06em] uppercase text-[#FF7A18]">CAMPAIGN LIMIT REACHED • {campaigns.length}/{PLAN_LIMITS.FREE.campaigns}</h1>
-                  <p className="mt-2 text-[13px] leading-[1.6] text-[#C2A080]">You’ve reached the limit of your <span className="text-[#E8E8EA] font-[700]">FREE</span> plan. FREE includes <span className="text-[#E8E8EA] font-[700]">2 campaigns</span> and <span className="text-[#E8E8EA] font-[700]">25 submissions</span>. Upgrade to PRO for unlimited campaigns and 500 submissions per month.</p>
+                  <h1 className="text-[18px] md:text-[22px] font-[800] tracking-[0.06em] uppercase text-[#FF7A18]">{limitType==='submissions' ? 'SUBMISSION LIMIT REACHED' : limitType==='export' ? 'CSV EXPORT IS A PRO FEATURE' : `GROUP LIMIT REACHED • ${campaigns.length}/${PLAN_LIMITS.FREE.campaigns}`}</h1>
+                  <p className="mt-2 text-[13px] leading-[1.6] text-[#C2A080]">You’ve reached the limit of your <span className="text-[#E8E8EA] font-[700]">FREE</span> plan. FREE includes <span className="text-[#E8E8EA] font-[700]">1 group</span> and <span className="text-[#E8E8EA] font-[700]">5 submissions</span>. Upgrade to PRO for unlimited campaigns and 500 submissions per month.</p>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button onClick={()=> handleUpgrade('PRO')} className="h-[48px] px-7 bg-[#FF7A18] text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px] shadow-[0_0_20px_rgba(255,122,24,0.3)]">UPGRADE TO PRO →</button>
                     <button onClick={()=> setView('pricing')} className="h-[48px] px-6 bg-[#0A0A0C] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">VIEW PRICING</button>
@@ -1680,7 +1693,7 @@ export default function App(){
                     <div className="flex items-center gap-2 flex-wrap">
                       <input value={search} onChange={e=> setSearch(e.target.value)} placeholder="Search name..." className="h-[36px] w-[140px] md:w-[180px] bg-[#060608] border border-[#222] rounded-[8px] px-3 text-[12px] focus:outline-none focus:border-[#2A2A30]" />
                       <button onClick={()=> setShowAllSubs(!showAllSubs)} className="h-[36px] px-3 bg-[#0A0A0C] border border-[#222] rounded-[8px] text-[11px] font-[700] tracking-[0.08em]">{showAllSubs ? 'SHOW LESS' : 'VIEW ALL'}</button>
-                      <button onClick={()=> doExport(selectedCampaign)} className="h-[36px] px-3 bg-[#101012] border border-[#222] rounded-[8px] text-[11px] font-[700]">EXPORT CSV</button>
+                      <button onClick={()=> doExport(selectedCampaign)} className="h-[36px] px-3 bg-[#101012] border border-[#222] rounded-[8px] text-[11px] font-[700]">{billing.plan==='FREE' ? 'UPGRADE FOR CSV' : 'EXPORT CSV'}</button>
                     </div>
                   </div>
                   <div className="mt-4 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[10px] p-3 flex items-center gap-3">
@@ -1769,7 +1782,7 @@ export default function App(){
                 <div className="bg-[#101012] border border-[#222] rounded-[14px] p-5 faceted-sm">
                   <div className="text-[11px] font-[800] tracking-[0.14em]">EXPORT • {billing.plan} PLAN</div>
                   <p className="mt-2 text-[12px] leading-[1.5] text-[#8A8A90]">CSV contains: {selectedCampaign.fields.map(f=>f.label).join(', ')} + submitted date. {billing.plan} allows {currentLimits.submissions} submissions.</p>
-                  <button onClick={()=> doExport(selectedCampaign)} className="mt-4 w-full h-[48px] bg-[#101012] hover:bg-[#0A0A0C] border border-[#FF7A18]/30 text-[#FF7A18] font-[800] tracking-[0.12em] text-[12px] rounded-[10px]">↓ EXPORT CSV</button>
+                  <button onClick={()=> doExport(selectedCampaign)} className="mt-4 w-full h-[48px] bg-[#101012] hover:bg-[#0A0A0C] border border-[#FF7A18]/30 text-[#FF7A18] font-[800] tracking-[0.12em] text-[12px] rounded-[10px]">{billing.plan==='FREE' ? '↑ UPGRADE FOR CSV' : '↓ EXPORT CSV'}</button>
                   <div className="mt-3 text-[10px] mono text-[#5A5A66] text-center">{slugify(selectedCampaign.name)}-submissions.csv • {billing.plan} • {selectedSubs.length}/{currentLimits.submissions}</div>
                 </div>
 
