@@ -833,32 +833,6 @@ export default function App(){
               </div>
             </div>
 
-            {campaigns.length > 0 && (
-              <section className="bg-[#101012] border border-[#FF7A18]/20 rounded-[14px] p-5 md:p-6 faceted-sm">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <div className="text-[11px] font-[800] tracking-[0.16em] text-[#FF7A18]">MY GROUPS • {campaigns.length}</div>
-                    <div className="text-[12px] text-[#8A8A90] mt-1">Your groups stay available here on this device.</div>
-                  </div>
-                  <button onClick={()=> setView('dashboard')} className="h-[40px] px-4 bg-[#0A0A0C] border border-[#222] rounded-[9px] text-[11px] font-[800] tracking-[0.1em]">VIEW ALL →</button>
-                </div>
-                <div className="mt-4 grid gap-2">
-                  {campaigns.slice(0,4).map(c=>{
-                    const count=submissions.filter(s=>s.campaignId===c.id).length;
-                    return (
-                      <button key={c.id} onClick={()=>{setSelectedId(c.id);setView('detail');}} className="w-full text-left bg-[#0A0A0C] border border-[#1A1A1E] hover:border-[#2A2A30] rounded-[9px] px-4 py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[13px] font-[700] truncate">{c.name}</div>
-                          <div className="text-[10px] mono text-[#6A6A72] mt-1">{c.context} • {count} {c.context==='FAMILY' ? 'PEOPLE' : 'SUBMISSIONS'} • {c.status}</div>
-                        </div>
-                        <span className="text-[11px] mono text-[#FF7A18] shrink-0">OPEN →</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-[13px] font-[800] tracking-[0.18em]">PRICING • START FREE, UPGRADE WHEN READY</h2>
@@ -873,14 +847,14 @@ export default function App(){
                       {p.popular && <div className="absolute top-0 right-0 bg-[#FF7A18] text-black text-[10px] font-[800] tracking-[0.12em] px-3 py-1 rounded-bl-[8px]">POPULAR</div>}
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded-[5px] text-[10px] font-[800] tracking-[0.12em] border ${plan==='PRO' ? 'bg-[#FF7A18] text-black border-[#FF7A18]' : 'bg-[#0A0A0C] border-[#222] text-[#8A8A90]'}`}>{plan}</span>
-                        {isCurrent && <span className="px-2 py-0.5 rounded-[5px] text-[10px] font-[800] bg-[#0F1F0F] border border-[#1E3A1E] text-[#5CFF7A]">CURRENT</span>}
+                        
                       </div>
                       <div className="mt-4 flex items-baseline gap-1">
                         <span className="text-[32px] font-[800] tracking-[-0.02em]">${p.monthly}</span>
                         <span className="text-[12px] mono text-[#6A6A72]">/ month</span>
                       </div>
                       <div className="mt-1 text-[11px] mono text-[#6A6A72]">{p.campaigns} • {p.submissions}</div>
-                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} className={`mt-4 w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-colors ${plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_20px_rgba(255,122,24,0.3)]' : 'bg-[#0A0A0C] border border-[#222] text-[#C2C2CA] hover:border-[#2A2A30]'}`}>{isCurrent ? 'CURRENT PLAN' : p.cta}</button>
+                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} className={`mt-4 w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-colors ${plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_20px_rgba(255,122,24,0.3)]' : 'bg-[#0A0A0C] border border-[#222] text-[#C2C2CA] hover:border-[#2A2A30]'}`}>{p.cta}</button>
                     </div>
                   );
                 })}
@@ -996,7 +970,7 @@ export default function App(){
                       {plan==='BUSINESS' && <div className="flex gap-2"><span className="text-[#FF7A18]">✓</span><span className="text-[#9A9AA3]">2000 subs • Organization billing</span></div>}
                     </div>
                     <div className="mt-6">
-                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} disabled={isCurrent} className={`w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-all ${isCurrent ? 'bg-[#1A1A1E] border border-[#222] text-[#5A5A66]' : plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_24px_rgba(255,122,24,0.35)] hover:bg-[#FF8A2E]' : 'bg-[#0A0A0C] border border-[#222] text-[#E8E8EA] hover:border-[#2A2A30]'}`}>{isCurrent ? 'CURRENT PLAN' : p.cta}</button>
+                      <button onClick={()=> plan==='FREE' ? setView('dashboard') : handleUpgrade(plan)} disabled={isCurrent} className={`w-full h-[48px] rounded-[10px] text-[12px] font-[800] tracking-[0.12em] transition-all ${isCurrent ? 'bg-[#1A1A1E] border border-[#222] text-[#5A5A66]' : plan==='PRO' ? 'bg-[#FF7A18] text-black shadow-[0_0_24px_rgba(255,122,24,0.35)] hover:bg-[#FF8A2E]' : 'bg-[#0A0A0C] border border-[#222] text-[#E8E8EA] hover:border-[#2A2A30]'}`}>{p.cta}</button>
                       <div className="mt-3 text-center text-[10px] mono text-[#5A5A66]">{p.desc}</div>
                     </div>
                   </div>
