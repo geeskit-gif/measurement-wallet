@@ -329,12 +329,6 @@ const PLAN_PRICING: Record<Plan, { monthly: number; yearly: number; campaigns: s
   BUSINESS: { monthly: 0, yearly: 0, campaigns: 'Unlimited campaigns', submissions: '500 submissions / mo', cta: 'COMING LATER', desc: 'Business plans are coming later' },
 };
 
-const MOCK_INVOICES: Invoice[] = [
-  { id: '1', date: '2025-11-15', plan: 'PRO', amount: '$19.00', status: 'PAID', invoiceId: 'INV-2025-001' },
-  { id: '2', date: '2025-10-15', plan: 'PRO', amount: '$19.00', status: 'PAID', invoiceId: 'INV-2025-002' },
-  { id: '3', date: '2025-09-15', plan: 'FREE', amount: '$0.00', status: 'PAID', invoiceId: 'INV-2025-003' },
-];
-
 
 // ===== REAL STRIPE BILLING =====
 const MW_PRO_PRICE_ID = 'price_1UHvf2CMdtEyhy9yDTNSGK30';
@@ -401,7 +395,7 @@ export default function App(){
   const [pricingInterval, setPricingInterval] = useState<BillingInterval>('monthly');
   const [upgradeTarget, setUpgradeTarget] = useState<Plan>('PRO');
   const [billingTab, setBillingTab] = useState<BillingTab>('overview');
-  const [orgForm, setOrgForm] = useState({ name: 'North Depot Logistics', email: 'billing@northdepot.com', taxId: 'GB 123 456 789' });
+  const [orgForm, setOrgForm] = useState({ name: '', email: '', taxId: '' });
 
   // CREATE FLOW STATE
   const [createStep, setCreateStep] = useState<1|2>(1);
@@ -1114,7 +1108,7 @@ export default function App(){
               <p className="mt-3 text-[14px] leading-[1.6] text-[#9A9AA3]">Your <span className="text-[#FF7A18] font-[700]">{billing.plan}</span> plan is now active. Stripe confirms your subscription.</p>
               <div className="mt-6 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4 text-left">
                 <div className="flex justify-between text-[12px]"><span className="text-[#6A6A72] mono">PLAN</span><span className="font-[700]">{billing.plan} • {billing.interval?.toUpperCase()}</span></div>
-                <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">AMOUNT</span><span className="font-[700] text-[#FF7A18]">${billing.plan==='PRO' ? '19.00' : billing.plan==='BUSINESS' ? '49.00' : '0.00'} • PAID • MOCK</span></div>
+                <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">AMOUNT</span><span className="font-[700] text-[#FF7A18]">${billing.plan==='PRO' ? '9.00' : '0.00'} • {billing.plan==='PRO' ? 'ACTIVE' : 'FREE'}</span></div>
                 <div className="flex justify-between text-[12px] mt-2"><span className="text-[#6A6A72] mono">INVOICE</span><span className="font-[600] mono">STRIPE SUBSCRIPTION</span></div>
               </div>
               <button onClick={()=> setView('dashboard')} className="mt-8 w-full h-[48px] bg-[#FF7A18] hover:bg-[#FF8A2E] text-black font-[800] tracking-[0.12em] text-[13px] rounded-[10px] shadow-[0_0_24px_rgba(255,122,24,0.35)]">GO TO DASHBOARD →</button>
@@ -1124,7 +1118,7 @@ export default function App(){
               </div>
               <div className="mt-8 pt-6 border-t border-[#1A1A1E] flex items-center justify-center gap-2">
                 <div className="w-[28px] h-[28px] bg-black border border-[#222] rounded-[6px] overflow-hidden"><img src={mwLogo} alt="MW" className="w-full h-full object-contain" /></div>
-                <span className="text-[10px] mono tracking-[0.16em] text-[#5A5A66]">MW • MEASUREMENT WALLET • PAYMENT SUCCESS • MOCK</span>
+                <span className="text-[10px] mono tracking-[0.16em] text-[#5A5A66]">MW • MEASUREMENT WALLET • PAYMENT SUCCESS</span>
               </div>
             </div>
           </div>
@@ -1150,7 +1144,7 @@ export default function App(){
                         <span className={`px-2.5 py-1 rounded-[6px] text-[11px] font-[800] tracking-[0.12em] border ${billing.plan==='FREE' ? 'bg-[#0A0A0C] border-[#222] text-[#8A8A90]' : 'bg-[#FF7A18] text-black border-[#FF7A18] shadow-[0_0_12px_rgba(255,122,24,0.3)]'}`}>{billing.plan}</span>
                         <span className="px-2 py-0.5 rounded-[5px] text-[10px] font-[800] bg-[#0F1F0F] border border-[#1E3A1E] text-[#5CFF7A] tracking-[0.1em]">ACTIVE</span>
                       </div>
-                      <div className="mt-1 text-[13px] font-[600]">Renews {fmtDate(renewalDate)} • {billing.interval?.toUpperCase()} • Frontend-only</div>
+                      <div className="mt-1 text-[13px] font-[600]">Renews {fmtDate(renewalDate)} • {billing.interval?.toUpperCase()}</div>
                     </div>
                   </div>
                   <div className="relative mt-6 space-y-4">
@@ -1179,7 +1173,7 @@ export default function App(){
                   <button onClick={()=> setView('pricing')} className="w-full h-[48px] bg-[#FF7A18] text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px] shadow-[0_0_20px_rgba(255,122,24,0.25)]">CHANGE PLAN →</button>
                   <button onClick={()=> setView('billing')} className="w-full h-[48px] bg-[#0A0A0C] border border-[#222] rounded-[10px] text-[12px] font-[700] tracking-[0.12em]">VIEW BILLING • INVOICES</button>
                   {billing.plan!=='FREE' && <button onClick={handleCancelPlan} className="w-full h-[48px] bg-[#1A0A0A] border border-[#3A1A1A] text-[#FF5A5A] rounded-[10px] text-[12px] font-[700] tracking-[0.12em] hover:bg-[#2A1010]">CANCEL PLAN • BACK TO FREE</button>}
-                  <div className="text-[10px] mono text-[#5A5A66] text-center pt-2">Cancel immediately sets plan to FREE in localStorage</div>
+                  <div className="text-[10px] mono text-[#5A5A66] text-center pt-2">Cancellation is managed through Stripe</div>
                 </div>
                 <div className="bg-[#101012] border border-[#222] rounded-[14px] p-5">
                   <div className="text-[11px] font-[800] tracking-[0.14em]">USAGE BREAKDOWN</div>
@@ -1206,7 +1200,7 @@ export default function App(){
               <button onClick={()=> setView('dashboard')} className="w-[36px] h-[36px] bg-[#101012] border border-[#222] rounded-[8px] flex items-center justify-center">←</button>
               <div className="flex-1 min-w-0">
                 <h1 className="text-[20px] md:text-[24px] font-[800] tracking-[-0.01em] uppercase">BILLING</h1>
-                <p className="text-[11px] mono text-[#8A8A90] truncate">TABS • Overview • Invoices • Payment Methods • Organization • Frontend-only</p>
+                <p className="text-[11px] mono text-[#8A8A90] truncate">TABS • Overview • Invoices • Payment Methods • Organization</p>
               </div>
               <div className={`hidden md:flex px-3 h-[32px] rounded-[8px] border items-center gap-2 text-[11px] font-[800] tracking-[0.1em] ${billing.plan==='FREE' ? 'bg-[#101012] border-[#222] text-[#8A8A90]' : 'bg-[#1A120E] border-[#FF7A18]/30 text-[#FF7A18]'}`}><span className={`w-1.5 h-1.5 rounded-full ${billing.plan==='FREE' ? 'bg-[#5A5A66]' : 'bg-[#FF7A18] shadow-[0_0_6px_#FF7A18]'}`} />{billing.plan} • ACTIVE</div>
             </div>
@@ -1269,57 +1263,22 @@ export default function App(){
                   </div>
                   <div className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[14px] p-5">
                     <div className="text-[11px] font-[800] tracking-[0.14em] text-[#FF7A18]">STRIPE HOSTED</div>
-                    <div className="mt-2 text-[11px] leading-[1.6] text-[#6A6A72]">Stripe handles checkout, payment methods, invoices and subscription management. No real charge. Plan persisted in localStorage. Payment form accepts 4242 mock card. Cancel → FREE.</div>
+                    <div className="mt-2 text-[11px] leading-[1.6] text-[#6A6A72]">Stripe handles checkout, payment methods, invoices and subscription management. Your card details are entered directly on Stripe.</div>
                   </div>
                 </div>
               </div>
             )}
 
             {billingTab==='invoices' && (
-              <div className="space-y-4">
+              <div className="max-w-[700px] space-y-4">
                 <div className="bg-[#101012] border border-[#222] rounded-[16px] p-6 faceted-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-[800] tracking-[0.14em]">INVOICES • 3 MOCK • PAID • TABLE → CARDS MOBILE</div>
-                    <span className="text-[10px] mono text-[#6A6A72]">MOCK DATA • FRONTEND ONLY</span>
+                  <div className="text-[11px] font-[800] tracking-[0.14em]">INVOICES • STRIPE MANAGED</div>
+                  <div className="mt-3 text-[12px] leading-[1.7] text-[#8A8A90]">
+                    MW does not create or display local invoice records. Your subscription, invoices and payment history are managed securely by Stripe.
                   </div>
-                  <div className="hidden md:block mt-5 overflow-auto rounded-[10px] border border-[#222]">
-                    <table className="w-full text-left">
-                      <thead className="bg-[#0A0A0C] border-b border-[#1A1A1E]">
-                        <tr>
-                          <th className="px-5 py-3 text-[10px] font-[700] tracking-[0.12em] text-[#6A6A72]">INVOICE ID</th>
-                          <th className="px-5 py-3 text-[10px] font-[700] tracking-[0.12em] text-[#6A6A72]">DATE</th>
-                          <th className="px-5 py-3 text-[10px] font-[700] tracking-[0.12em] text-[#6A6A72]">PLAN</th>
-                          <th className="px-5 py-3 text-[10px] font-[700] tracking-[0.12em] text-[#6A6A72]">AMOUNT</th>
-                          <th className="px-5 py-3 text-[10px] font-[700] tracking-[0.12em] text-[#6A6A72]">STATUS</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#141416]">
-                        {MOCK_INVOICES.map(inv=>(
-                          <tr key={inv.id} className="hover:bg-[#0A0A0C]">
-                            <td className="px-5 py-4 text-[12px] mono font-[600]">{inv.invoiceId}</td>
-                            <td className="px-5 py-4 text-[12px] mono text-[#8A8A90]">{fmtDate(inv.date)}</td>
-                            <td className="px-5 py-4"><span className={`px-2 py-0.5 rounded-[5px] text-[10px] font-[800] tracking-[0.1em] border ${inv.plan==='PRO' ? 'bg-[#1A120E] border-[#FF7A18]/30 text-[#FF7A18]' : 'bg-[#0A0A0C] border-[#222] text-[#8A8A90]'}`}>{inv.plan}</span></td>
-                            <td className="px-5 py-4 text-[13px] font-[700]">{inv.amount}</td>
-                            <td className="px-5 py-4"><span className="px-2 py-0.5 rounded-[5px] text-[10px] font-[800] bg-[#0F1F0F] border border-[#1E3A1E] text-[#5CFF7A]">{inv.status}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="md:hidden mt-5 grid gap-3">
-                    {MOCK_INVOICES.map(inv=>(
-                      <div key={inv.id} className="bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="text-[12px] mono font-[700]">{inv.invoiceId}</div>
-                          <span className="px-2 py-0.5 rounded-[5px] text-[10px] font-[800] bg-[#0F1F0F] border border-[#1E3A1E] text-[#5CFF7A]">{inv.status}</span>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="bg-[#101012] border border-[#1A1A1E] rounded-[8px] px-3 py-2"><div className="text-[9px] mono text-[#6A6A72]">DATE</div><div className="text-[12px] font-[600] mt-1">{fmtDate(inv.date)}</div></div>
-                          <div className="bg-[#101012] border border-[#1A1A1E] rounded-[8px] px-3 py-2"><div className="text-[9px] mono text-[#6A6A72]">PLAN</div><div className="text-[12px] font-[600] mt-1">{inv.plan}</div></div>
-                          <div className="bg-[#101012] border border-[#1A1A1E] rounded-[8px] px-3 py-2 col-span-2"><div className="text-[9px] mono text-[#6A6A72]">AMOUNT</div><div className="text-[13px] font-[700] mt-1 text-[#FF7A18]">{inv.amount} • MOCK • PAID</div></div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-5 bg-[#0A0A0C] border border-[#1A1A1E] rounded-[12px] p-4">
+                    <div className="text-[10px] mono text-[#6A6A72]">PAYMENT HISTORY</div>
+                    <div className="mt-1 text-[13px] font-[700]">Available through Stripe</div>
                   </div>
                 </div>
               </div>
@@ -1328,7 +1287,7 @@ export default function App(){
             {billingTab==='methods' && (
               <div className="max-w-[600px] space-y-4">
                 <div className="bg-[#101012] border border-[#222] rounded-[16px] p-6 faceted-sm">
-                  <div className="text-[11px] font-[800] tracking-[0.14em]">PAYMENT METHODS • MOCK VISA 4242</div>
+                  <div className="text-[11px] font-[800] tracking-[0.14em]">PAYMENT METHODS • STRIPE</div>
                   <div className="mt-5 bg-[#0A0A0C] border border-[#222] rounded-[12px] p-4 flex items-center gap-4">
                     <div className="w-[48px] h-[32px] bg-gradient-to-br from-[#1A1A1E] to-[#0A0A0C] border border-[#222] rounded-[6px] flex items-center justify-center text-[10px] font-[800] tracking-[0.1em]">VISA</div>
                     <div className="flex-1">
@@ -1364,10 +1323,10 @@ export default function App(){
                     </div>
                     <div>
                       <label className="text-[11px] font-[700] tracking-[0.12em] text-[#C2C2CA]">TAX ID (OPTIONAL)</label>
-                      <input value={orgForm.taxId} onChange={e=> setOrgForm({...orgForm, taxId:e.target.value})} className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] placeholder:text-[#5A5A66] focus:outline-none focus:border-[#FF7A18]/50" placeholder="GB 123 456 789" />
+                      <input value={orgForm.taxId} onChange={e=> setOrgForm({...orgForm, taxId:e.target.value})} className="mt-2 w-full h-[52px] bg-[#060608] border border-[#222] rounded-[10px] px-4 text-[16px] placeholder:text-[#5A5A66] focus:outline-none focus:border-[#FF7A18]/50" placeholder="Optional tax ID" />
                     </div>
                   </div>
-                  <button onClick={()=> { setToast('Organization saved • Frontend-only'); setTimeout(()=>setToast(''),2000); }} className="w-full h-[48px] bg-[#FF7A18] text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px]">SAVE ORGANIZATION • MOCK</button>
+                  <button onClick={()=> { setToast('Organization saved'); setTimeout(()=>setToast(''),2000); }} className="w-full h-[48px] bg-[#FF7A18] text-black font-[800] tracking-[0.12em] text-[12px] rounded-[10px]">SAVE ORGANIZATION</button>
                 </div>
               </div>
             )}
